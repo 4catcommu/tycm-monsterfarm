@@ -1,183 +1,68 @@
-# PATCH: ระบบจัดการไอเทมแบบแก้ไขได้
-# ใช้กับไฟล์ TYCM Monster Farm
-# วิธีใช้:
-# 1) หา function renderAdmItems() เดิม
-# 2) ลบ function renderAdmItems() เดิมทั้งก้อน
-# 3) วางโค้ดด้านล่างนี้แทน
-# 4) วางฟังก์ชัน saveItem / addQty / deleteItem / createItem ต่อท้ายใต้ renderAdmItems()
-# 5) บันทึกไฟล์ แล้วรีเฟรชหน้าเว็บ
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>TYCM Monster Farm FIXED</title>
+</head>
+<body>
+<h2>ไฟล์นี้เป็นเวอร์ชันแก้ล็อกอิน + Firestore Rules พร้อมใช้</h2>
 
+<h3>1. Firestore Rules (เอาไปวางใน Firebase)</h3>
+<pre>
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
 
-/* ===== REPLACE OLD renderAdmItems() WITH THIS ===== */
+    match /monsterFarm/{doc} {
+      allow read, write: if true;
+    }
 
-function renderAdmItems(){
-  const el=document.getElementById('adm-items-list');
+    match /monsterFarmPlayers/{playerId} {
+      allow read, write: if true;
+    }
 
-  if(!el) return;
+    match /monsterFarmBattleHistory/{docId} {
+      allow read, write: if true;
+    }
+  }
+}
+</pre>
 
-  if(!inventory.length){
-    el.innerHTML=`
-      <div class="notice">ยังไม่มีไอเทม</div>
-      <button class="btn btn-gold btn-full" onclick="createItem()">➕ สร้างไอเทมใหม่</button>
-    `;
+<h3>2. แก้ loginPlayer function</h3>
+<pre>
+async function loginPlayer(){
+  const name = document.getElementById('login-name').value.trim();
+  const pin = document.getElementById('login-pin').value.trim();
+  const status = document.getElementById('login-status');
+
+  if(!name || !pin){
+    status.textContent = "กรอกชื่อ + รหัสก่อน";
     return;
   }
 
-  el.innerHTML = `
-    ${inventory.map((it,i)=>`
-      <div class="mon-admin-card">
-        <div class="card-title">ไอเทม #${i+1}</div>
+  try{
+    const data = await firebaseMonsterFarm.loginPlayer(name, pin, {
+      savedProfile: {},
+      inventory: []
+    });
 
-        <div class="fr3">
-          <div class="fg">
-            <label class="fl">ไอคอน</label>
-            <input type="text" value="${escapeInputValue(it.icon||'📦')}" id="it-icon-${i}">
-          </div>
+    playerSession = { key: firebaseMonsterFarm.currentPlayerKey, name };
+    localStorage.setItem('tycm_current_player', JSON.stringify(playerSession));
 
-          <div class="fg">
-            <label class="fl">ชื่อไอเทม</label>
-            <input type="text" value="${escapeInputValue(it.name||'')}" id="it-name-${i}">
-          </div>
+    savedProfile = data.savedProfile || {};
+    inventory = data.inventory || [];
+    history = data.history || [];
 
-          <div class="fg">
-            <label class="fl">จำนวน</label>
-            <input type="number" value="${Number(it.count||0)}" id="it-count-${i}" min="0">
-          </div>
-        </div>
+    document.getElementById('login-ov').style.display = 'none';
+    refreshLobby();
 
-        <div class="fg">
-          <label class="fl">คำอธิบาย</label>
-          <textarea id="it-desc-${i}">${escapeTextareaValue(it.desc||'')}</textarea>
-        </div>
-
-        <div class="fg">
-          <label class="fl">Effect / ประเภทการใช้งาน</label>
-          <select id="it-effect-${i}">
-            <option value="custom" ${it.effect==='custom'?'selected':''}>custom / วัสดุทั่วไป</option>
-            <option value="capture_required" ${it.effect==='capture_required'?'selected':''}>capture_required / ใช้จับสัตว์ปิศาจ</option>
-            <option value="heal30" ${it.effect==='heal30'?'selected':''}>heal30 / ฟื้น HP 30</option>
-            <option value="heal60" ${it.effect==='heal60'?'selected':''}>heal60 / ฟื้น HP 60</option>
-            <option value="dmg25" ${it.effect==='dmg25'?'selected':''}>dmg25 / ทำดาเมจ 25</option>
-            <option value="shield50" ${it.effect==='shield50'?'selected':''}>shield50 / ลดดาเมจ 50%</option>
-            <option value="elixir" ${it.effect==='elixir'?'selected':''}>elixir / น้ำปราณ</option>
-            <option value="material" ${it.effect==='material'?'selected':''}>material / วัตถุดิบ</option>
-          </select>
-        </div>
-
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
-          <button class="btn btn-gold btn-sm" onclick="saveItem(${i})">💾 บันทึก</button>
-          <button class="btn btn-out btn-sm" onclick="addQty(${i},1)">+1</button>
-          <button class="btn btn-out btn-sm" onclick="addQty(${i},5)">+5</button>
-          <button class="btn btn-out btn-sm" onclick="addQty(${i},-1)">-1</button>
-          <button class="btn btn-out btn-sm" onclick="addQty(${i},-5)">-5</button>
-          <button class="btn btn-red btn-sm" onclick="deleteItem(${i})">🗑 ลบ</button>
-        </div>
-      </div>
-    `).join('')}
-
-    <button class="btn btn-gold btn-full" onclick="createItem()">➕ สร้างไอเทมใหม่</button>
-  `;
-
-  const sel=document.getElementById('adm-item-sel');
-  if(sel){
-    sel.innerHTML=inventory.map(it=>`
-      <option value="${escapeInputValue(it.id)}">${escapeHtmlSafe(it.icon||'📦')} ${escapeHtmlSafe(it.name||'ไม่ระบุชื่อ')}</option>
-    `).join('');
+  }catch(err){
+    status.textContent = err.message;
   }
 }
+</pre>
 
+<p>ถ้ายังพัง = ปัญหา 90% มาจาก Firestore Rules ไม่ใช่โค้ดแล้ว</p>
 
-/* ===== ADD THESE HELPER FUNCTIONS ===== */
-
-function escapeHtmlSafe(str){
-  return String(str ?? '')
-    .replaceAll('&','&amp;')
-    .replaceAll('<','&lt;')
-    .replaceAll('>','&gt;')
-    .replaceAll('"','&quot;')
-    .replaceAll("'","&#039;");
-}
-
-function escapeInputValue(str){
-  return escapeHtmlSafe(str);
-}
-
-function escapeTextareaValue(str){
-  return escapeHtmlSafe(str);
-}
-
-
-/* ===== ADD THESE ITEM ADMIN FUNCTIONS ===== */
-
-function saveItem(i){
-  if(!inventory[i]) return;
-
-  inventory[i].icon = document.getElementById(`it-icon-${i}`).value || '📦';
-  inventory[i].name = document.getElementById(`it-name-${i}`).value || 'ไอเทมไม่มีชื่อ';
-  inventory[i].count = Math.max(0, parseInt(document.getElementById(`it-count-${i}`).value) || 0);
-  inventory[i].desc = document.getElementById(`it-desc-${i}`).value || '';
-  inventory[i].effect = document.getElementById(`it-effect-${i}`).value || 'custom';
-
-  if(!inventory[i].id){
-    inventory[i].id = 'item_' + Date.now() + '_' + i;
-  }
-
-  save();
-  renderInventory();
-  renderAdmItems();
-  alert('บันทึกไอเทมแล้ว');
-}
-
-function addQty(i,delta){
-  if(!inventory[i]) return;
-
-  inventory[i].count = Math.max(0, (Number(inventory[i].count)||0) + Number(delta||0));
-
-  save();
-  renderInventory();
-  renderAdmItems();
-}
-
-function deleteItem(i){
-  if(!inventory[i]) return;
-
-  const name = inventory[i].name || 'ไอเทมนี้';
-  if(!confirm(`ลบ ${name} ?`)) return;
-
-  inventory.splice(i,1);
-
-  save();
-  renderInventory();
-  renderAdmItems();
-}
-
-function createItem(){
-  inventory.push({
-    id:'item_' + Date.now(),
-    name:'ไอเทมใหม่',
-    icon:'📦',
-    desc:'',
-    count:0,
-    effect:'custom'
-  });
-
-  save();
-  renderInventory();
-  renderAdmItems();
-}
-
-
-/* ===== OPTIONAL: REPLACE OLD admAddItem() WITH THIS SAFER VERSION ===== */
-
-function admAddItem(){
-  const id=document.getElementById('adm-item-sel')?.value;
-  const qty=parseInt(document.getElementById('adm-item-qty')?.value)||1;
-
-  const inv=inventory.find(i=>i.id===id);
-  if(inv){
-    inv.count=Math.max(0,(Number(inv.count)||0)+qty);
-    save();
-    renderInventory();
-    renderAdmItems();
-  }
-}
+</body>
+</html>
