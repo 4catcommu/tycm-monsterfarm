@@ -220,21 +220,6 @@ input[type=text],input[type=number],select,textarea{font-size:1rem;background:#f
 </style>
 </head>
 <body>
-<!--
-FIRESTORE RULES ที่ต้องใช้กับไฟล์นี้:
-
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if true;
-    }
-  }
-}
-
-หลังวาง Rules ต้องกด Publish ใน Firebase Console
--->
-
 <div class="login-ov" id="login-ov">
   <div class="login-box">
     <h2>☯ เข้าสู่ฟาร์มสัตว์ปิศาจ</h2>
@@ -537,19 +522,7 @@ service cloud.firestore {
 <!-- Firebase / Firestore Connector: Multiplayer per-player data -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-  import {
-    getFirestore,
-    doc,
-    getDoc,
-    setDoc,
-    serverTimestamp,
-    collection,
-    addDoc,
-    getDocs,
-    query,
-    orderBy,
-    limit
-  } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+  import { getFirestore, doc, getDoc, setDoc, serverTimestamp, collection, addDoc, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyCL5h2SJheZG9I4l3eNHG3dH0_CRaZBbvI",
@@ -565,185 +538,67 @@ service cloud.firestore {
   const db = getFirestore(app);
   const globalRef = doc(db, "monsterFarm", "globalConfig");
 
-  function normalizeName(name){
-    return String(name || "").trim().replace(/\s+/g, " ");
-  }
-
-  function playerKeyFromName(name){
-    return normalizeName(name)
-      .toLowerCase()
-      .replace(/[\/\\#?\[\].]/g, "-")
-      .replace(/\s+/g, "_")
-      .slice(0, 80);
-  }
-
-  function simpleHash(str){
-    let h = 2166136261;
-    const s = String(str || "");
-    for(let i = 0; i < s.length; i++){
-      h ^= s.charCodeAt(i);
-      h = Math.imul(h, 16777619);
-    }
-    return (h >>> 0).toString(16);
-  }
-
-  function readableFirebaseError(err, action){
-    const code = err?.code || "unknown";
-    const msg = err?.message || String(err || "");
-
-    if(code === "permission-denied"){
-      return `${action}ไม่ได้: Firestore Rules ยังไม่อนุญาต (permission-denied)`;
-    }
-    if(code === "unavailable"){
-      return `${action}ไม่ได้: Firebase มองว่าออฟไลน์/เชื่อมต่อไม่ได้ (unavailable)`;
-    }
-    if(code === "failed-precondition"){
-      return `${action}ไม่ได้: Firestore ต้องการ index หรือมีเงื่อนไขไม่ครบ (${msg})`;
-    }
-    return `${action}ไม่ได้: ${code} ${msg}`;
-  }
-
-  async function safeGetDoc(ref, label){
-    try{
-      return await getDoc(ref);
-    }catch(err){
-      console.error("Firestore getDoc failed:", label, err);
-      throw new Error(readableFirebaseError(err, "อ่านข้อมูล Firebase"));
-    }
-  }
-
-  async function safeSetDoc(ref, data, options, label){
-    try{
-      return await setDoc(ref, data, options);
-    }catch(err){
-      console.error("Firestore setDoc failed:", label, err);
-      throw new Error(readableFirebaseError(err, "บันทึกข้อมูล Firebase"));
-    }
-  }
+  function normalizeName(name){ return String(name||'').trim().replace(/\s+/g,' '); }
+  function playerKeyFromName(name){ return normalizeName(name).toLowerCase().replace(/[\/\\#?\[\].]/g,'-').replace(/\s+/g,'_').slice(0,80); }
+  function simpleHash(str){ let h=2166136261; const s=String(str||''); for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return (h>>>0).toString(16); }
 
   window.firebaseMonsterFarm = {
-    currentPlayerKey: null,
-    currentPlayerName: null,
+    currentPlayerKey:null,
+    currentPlayerName:null,
 
     async loadGlobalState(){
-      const snap = await safeGetDoc(globalRef, "monsterFarm/globalConfig");
+      const snap = await getDoc(globalRef);
       if(!snap.exists()) return null;
       return snap.data();
     },
 
     async saveGlobalState(data){
-      await safeSetDoc(
-        globalRef,
-        {
-          ...data,
-          updatedAt: serverTimestamp()
-        },
-        { merge: true },
-        "monsterFarm/globalConfig"
-      );
+      await setDoc(globalRef,{...data,updatedAt:serverTimestamp()},{merge:true});
     },
 
-    async loginPlayer(playerName, pin, defaults){
-      const name = normalizeName(playerName);
-      const rawPin = String(pin || "");
-
-      if(!name) throw new Error("กรุณาใส่ชื่อตัวละคร");
-      if(rawPin.length < 3) throw new Error("รหัสผู้เล่นควรมีอย่างน้อย 3 ตัวอักษร");
-
-      const key = playerKeyFromName(name);
-      const ref = doc(db, "monsterFarmPlayers", key);
-      const pinHash = simpleHash(rawPin);
-
-      const snap = await safeGetDoc(ref, "monsterFarmPlayers/" + key);
-
-      this.currentPlayerKey = key;
-      this.currentPlayerName = name;
-
+    async loginPlayer(playerName,pin,defaults){
+      const name=normalizeName(playerName);
+      const rawPin=String(pin||'');
+      if(!name) throw new Error('กรุณาใส่ชื่อตัวละคร');
+      if(rawPin.length<3) throw new Error('รหัสผู้เล่นควรมีอย่างน้อย 3 ตัวอักษร');
+      const key=playerKeyFromName(name);
+      const ref=doc(db,'monsterFarmPlayers',key);
+      const snap=await getDoc(ref);
+      const pinHash=simpleHash(rawPin);
+      this.currentPlayerKey=key;
+      this.currentPlayerName=name;
       if(!snap.exists()){
-        const baseProfile = defaults.savedProfile || {};
-        const data = {
+        const data={
           pinHash,
-          savedProfile: {
-            name,
-            hp: Number(baseProfile.hp || 100),
-            earth: Number(baseProfile.earth || 0),
-            water: Number(baseProfile.water || 0),
-            wind: Number(baseProfile.wind || 0),
-            fire: Number(baseProfile.fire || 0),
-            wood: Number(baseProfile.wood || 0),
-            metal: Number(baseProfile.metal || 0),
-            prana: Number(baseProfile.prana || 0),
-            dodge: Number(baseProfile.dodge || 0),
-            knowledge: Number(baseProfile.knowledge || 0),
-            gold: Number(baseProfile.gold || 0),
-            path: baseProfile.path || "other"
-          },
-          inventory: Array.isArray(defaults.inventory) ? defaults.inventory : [],
-          history: [],
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
+          savedProfile:{...(defaults.savedProfile||{}),name:name},
+          inventory:Array.isArray(defaults.inventory)?defaults.inventory:[],
+          history:[],
+          createdAt:serverTimestamp(),
+          updatedAt:serverTimestamp()
         };
-
-        await safeSetDoc(ref, data, { merge: true }, "create monsterFarmPlayers/" + key);
+        await setDoc(ref,data);
         return data;
       }
-
-      const data = snap.data();
-
-      if(data.pinHash !== pinHash){
-        throw new Error("รหัสผู้เล่นไม่ถูกต้อง หรือชื่อนี้ถูกใช้ไปแล้ว");
-      }
-
+      const data=snap.data();
+      if(data.pinHash!==pinHash) throw new Error('รหัสผู้เล่นไม่ถูกต้อง หรือชื่อนี้ถูกใช้ไปแล้ว');
       return data;
     },
 
     async savePlayerState(data){
-      if(!this.currentPlayerKey){
-        console.warn("savePlayerState skipped: no currentPlayerKey");
-        return;
-      }
-
-      const ref = doc(db, "monsterFarmPlayers", this.currentPlayerKey);
-
-      await safeSetDoc(
-        ref,
-        {
-          ...data,
-          updatedAt: serverTimestamp()
-        },
-        { merge: true },
-        "save monsterFarmPlayers/" + this.currentPlayerKey
-      );
+      if(!this.currentPlayerKey) return;
+      const ref=doc(db,'monsterFarmPlayers',this.currentPlayerKey);
+      await setDoc(ref,{...data,updatedAt:serverTimestamp()},{merge:true});
     },
 
     async addBattleHistory(item){
-      const payload = {
-        ...item,
-        ts: Date.now(),
-        createdAt: serverTimestamp()
-      };
-
-      try{
-        await addDoc(collection(db, "monsterFarmBattleHistory"), payload);
-      }catch(err){
-        console.error("addBattleHistory failed:", err);
-        // ไม่ให้เกมพังถ้าประวัติกลางบันทึกไม่ได้
-      }
+      const payload={...item,ts:Date.now(),createdAt:serverTimestamp()};
+      await addDoc(collection(db,'monsterFarmBattleHistory'),payload);
     },
 
     async loadBattleHistory(){
-      try{
-        const q = query(
-          collection(db, "monsterFarmBattleHistory"),
-          orderBy("ts", "desc"),
-          limit(300)
-        );
-        const snap = await getDocs(q);
-        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      }catch(err){
-        console.error("loadBattleHistory failed:", err);
-        return [];
-      }
+      const q=query(collection(db,'monsterFarmBattleHistory'),orderBy('ts','desc'),limit(300));
+      const snap=await getDocs(q);
+      return snap.docs.map(d=>({id:d.id,...d.data()}));
     }
   };
 
@@ -1714,73 +1569,16 @@ function admDelMon(idx){
 
 function renderAdmItems(){
   const el=document.getElementById('adm-items-list');
-
-  if(!inventory.length){
-    el.innerHTML='<div class="notice">ยังไม่มีไอเทม</div>';
-    return;
-  }
-
-  el.innerHTML = inventory.map((it,i)=>`
+  el.innerHTML=inventory.map((it,i)=>`
     <div class="mon-admin-card">
-      
-      <div class="fr3">
-        <input type="text" value="${it.icon}" id="it-icon-${i}">
-        <input type="text" value="${it.name}" id="it-name-${i}">
-        <input type="number" value="${it.count}" id="it-count-${i}">
-      </div>
-
-      <textarea id="it-desc-${i}">${it.desc||''}</textarea>
-
-      <div style="display:flex;gap:5px;margin-top:6px">
-        <button class="btn btn-gold btn-sm" onclick="saveItem(${i})">💾 บันทึก</button>
-        <button class="btn btn-out btn-sm" onclick="addQty(${i},1)">+1</button>
-        <button class="btn btn-out btn-sm" onclick="addQty(${i},-1)">-1</button>
-        <button class="btn btn-red btn-sm" onclick="deleteItem(${i})">🗑 ลบ</button>
-      </div>
-
-    </div>
-  `).join('');
-}
-function saveItem(i){
-  const it = inventory[i];
-
-  it.icon = document.getElementById(`it-icon-${i}`).value;
-  it.name = document.getElementById(`it-name-${i}`).value;
-  it.count = parseInt(document.getElementById(`it-count-${i}`).value)||0;
-  it.desc = document.getElementById(`it-desc-${i}`).value;
-
-  save();
-  renderAdmItems();
+      <div class="mon-admin-name">${it.icon} ${it.name} — คงเหลือ: ${it.count}</div>
+      <div class="mon-admin-meta">${it.desc||''}</div>
+    </div>`).join('');
+  // Fill selector
+  const sel=document.getElementById('adm-item-sel');
+  sel.innerHTML=inventory.map(it=>`<option value="${it.id}">${it.icon} ${it.name}</option>`).join('');
 }
 
-function addQty(i,delta){
-  inventory[i].count = Math.max(0,(inventory[i].count||0)+delta);
-  save();
-  renderAdmItems();
-}
-
-function deleteItem(i){
-  if(!confirm("ลบไอเทมนี้?")) return;
-  inventory.splice(i,1);
-  save();
-  renderAdmItems();
-}
-
-<button class="btn btn-gold btn-full" onclick="createItem()">➕ สร้างไอเทมใหม่</button>
-
-function createItem(){
-  inventory.push({
-    id:'item_'+Date.now(),
-    name:'ไอเทมใหม่',
-    icon:'📦',
-    desc:'',
-    count:0,
-    effect:'custom'
-  });
-
-  save();
-  renderAdmItems();
-}
 function admAddItem(){
   const id=document.getElementById('adm-item-sel').value;
   const qty=parseInt(document.getElementById('adm-item-qty').value)||1;
@@ -1793,128 +1591,61 @@ function admAddItem(){
 // ══════════════════════════════════════════════
 async function loadFromFirebase(){
   if(!window.firebaseMonsterFarm) return;
-
   try{
     const cloud = await window.firebaseMonsterFarm.loadGlobalState();
-
     if(!cloud){
-      await window.firebaseMonsterFarm.saveGlobalState({ monsters });
-      console.log('🌱 Seed ข้อมูลมอนสเตอร์เริ่มต้นขึ้น Firebase แล้ว');
+      await window.firebaseMonsterFarm.saveGlobalState({monsters});
+      console.log('🌱 Seed ข้อมูลมอนสเตอร์กลางขึ้น Firebase แล้ว');
     }else{
       if(Array.isArray(cloud.monsters)) monsters = cloud.monsters;
+      localStorage.setItem('lhumu_monsters',JSON.stringify(monsters));
+      console.log('☁️ โหลดข้อมูลมอนสเตอร์กลางจาก Firebase สำเร็จ');
     }
-
-    try{
-      allHistory = await window.firebaseMonsterFarm.loadBattleHistory();
-    }catch(e){
-      console.warn('โหลดประวัติกลางไม่สำเร็จ ใช้ประวัติผู้เล่นแทน:', e);
-      allHistory = [];
+    if(window.firebaseMonsterFarm.loadBattleHistory){
+      allHistory = await window.firebaseMonsterFarm.loadBattleHistory().catch(()=>[]);
     }
-
-    localStorage.setItem('lhumu_monsters', JSON.stringify(monsters));
-    console.log('☁️ โหลดข้อมูลกลางจาก Firebase สำเร็จ');
-
   }catch(err){
     console.error('โหลด Firebase ไม่สำเร็จ:', err);
-    const status = document.getElementById('login-status');
-    if(status){
-      status.textContent = err.message || 'โหลด Firebase ไม่สำเร็จ';
-      status.style.color = '#8b0000';
-    }else{
-      alert('โหลด Firebase ไม่สำเร็จ จะใช้ข้อมูลในเครื่องก่อน: ' + err.message);
-    }
+    alert('โหลด Firebase ไม่สำเร็จ จะใช้ข้อมูลในเครื่องก่อน: ' + err.message);
   }
 }
 
 async function loginPlayer(){
-  const nameEl = document.getElementById('login-name');
-  const pinEl = document.getElementById('login-pin');
-  const status = document.getElementById('login-status');
-
-  const name = String(nameEl?.value || '').trim();
-  const pin = String(pinEl?.value || '').trim();
-
-  if(status){
-    status.textContent = 'กำลังเข้าสู่ระบบ...';
-    status.style.color = '#555';
-  }
-
-  if(!name || !pin){
-    if(status){
-      status.textContent = 'กรุณากรอกชื่อตัวละครและรหัสผู้เล่น';
-      status.style.color = '#8b0000';
-    }
-    return;
-  }
-
-  if(!window.firebaseMonsterFarm){
-    if(status){
-      status.textContent = 'Firebase ยังไม่พร้อม กรุณารีเฟรชหน้าเว็บ';
-      status.style.color = '#8b0000';
-    }
-    return;
-  }
-
+  const name=document.getElementById('login-name')?.value.trim()||'';
+  const pin=document.getElementById('login-pin')?.value||'';
+  const status=document.getElementById('login-status');
+  if(status) status.textContent='กำลังเข้าสู่ระบบ...';
   try{
-    const defaults = {
-      savedProfile: {
-        name,
-        hp: 100,
-        earth: 0,
-        water: 0,
-        wind: 0,
-        fire: 0,
-        wood: 0,
-        metal: 0,
-        prana: 0,
-        dodge: 0,
-        knowledge: 0,
-        gold: 0,
-        path: 'other'
-      },
-      inventory: JSON.parse(JSON.stringify(DEFAULT_ITEMS)),
-      history: []
+    const defaults={
+      savedProfile:{name,hp:100,earth:0,water:0,wind:0,fire:0,wood:0,metal:0,prana:0,dodge:0,knowledge:0,gold:0,path:'other'},
+      inventory:JSON.parse(JSON.stringify(DEFAULT_ITEMS)),
+      history:[]
     };
+    const data=await window.firebaseMonsterFarm.loginPlayer(name,pin,defaults);
+    const key=window.firebaseMonsterFarm.currentPlayerKey;
+    playerSession={key,name};
+    localStorage.setItem('tycm_current_player',JSON.stringify(playerSession));
 
-    const data = await window.firebaseMonsterFarm.loginPlayer(name, pin, defaults);
-    const key = window.firebaseMonsterFarm.currentPlayerKey;
+    savedProfile=data.savedProfile || defaults.savedProfile;
+    inventory=Array.isArray(data.inventory)?data.inventory:defaults.inventory;
+    history=Array.isArray(data.history)?data.history:[];
+    selectedPath=savedProfile?.path||'other';
 
-    playerSession = { key, name };
-    localStorage.setItem('tycm_current_player', JSON.stringify(playerSession));
+    localStorage.setItem(`tycm_${key}_profile`,JSON.stringify(savedProfile));
+    localStorage.setItem(`tycm_${key}_inv`,JSON.stringify(inventory));
+    localStorage.setItem(`tycm_${key}_history`,JSON.stringify(history));
 
-    savedProfile = data.savedProfile || defaults.savedProfile;
-    savedProfile.name = name;
-
-    inventory = Array.isArray(data.inventory) ? data.inventory : defaults.inventory;
-    history = Array.isArray(data.history) ? data.history : [];
-    selectedPath = savedProfile?.path || 'other';
-
-    localStorage.setItem(`tycm_${key}_profile`, JSON.stringify(savedProfile));
-    localStorage.setItem(`tycm_${key}_inv`, JSON.stringify(inventory));
-    localStorage.setItem(`tycm_${key}_history`, JSON.stringify(history));
-
-    const loginOv = document.getElementById('login-ov');
-    if(loginOv) loginOv.style.display = 'none';
-
-    await loadFromFirebase();
-
+    const ov=document.getElementById('login-ov');
+    if(ov) ov.style.display='none';
     renderPathPicker();
     loadProfileForm();
     refreshLobby();
     renderMonsterSelect();
     renderInventory();
     renderHistory();
-
-    if(status) status.textContent = '';
-
+    save();
   }catch(err){
-    console.error('Login failed:', err);
-    if(status){
-      status.textContent = err.message || 'ล็อกอินไม่สำเร็จ';
-      status.style.color = '#8b0000';
-    }else{
-      alert(err.message || 'ล็อกอินไม่สำเร็จ');
-    }
+    if(status) status.textContent=err.message||'เข้าสู่ระบบไม่สำเร็จ';
   }
 }
 
@@ -1922,20 +1653,13 @@ async function initApp(){
   document.getElementById('btn-heal').style.display='none';
   document.getElementById('btn-purify').style.display='none';
   document.getElementById('btn-array').style.display='none';
-
   await loadFromFirebase();
-
-  const savedSession = JSON.parse(localStorage.getItem('tycm_current_player') || 'null');
-  const loginOv = document.getElementById('login-ov');
-  const ln = document.getElementById('login-name');
-
-  if(ln && savedSession?.name) ln.value = savedSession.name;
-  if(loginOv) loginOv.style.display = 'flex';
-
   renderPathPicker();
   renderMonsterSelect();
   renderInventory();
   renderHistory();
+  const ln=document.getElementById('login-name');
+  if(ln && playerSession?.name) ln.value=playerSession.name;
 }
 
 initApp();
