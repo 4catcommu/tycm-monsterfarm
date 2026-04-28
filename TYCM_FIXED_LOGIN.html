@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>TYCM Monster Farm FIXED</title>
+</head>
+<body>
+<h2>ไฟล์นี้เป็นเวอร์ชันแก้ล็อกอิน + Firestore Rules พร้อมใช้</h2>
+
+<h3>1. Firestore Rules (เอาไปวางใน Firebase)</h3>
+<pre>
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /monsterFarm/{doc} {
+      allow read, write: if true;
+    }
+
+    match /monsterFarmPlayers/{playerId} {
+      allow read, write: if true;
+    }
+
+    match /monsterFarmBattleHistory/{docId} {
+      allow read, write: if true;
+    }
+  }
+}
+</pre>
+
+<h3>2. แก้ loginPlayer function</h3>
+<pre>
+async function loginPlayer(){
+  const name = document.getElementById('login-name').value.trim();
+  const pin = document.getElementById('login-pin').value.trim();
+  const status = document.getElementById('login-status');
+
+  if(!name || !pin){
+    status.textContent = "กรอกชื่อ + รหัสก่อน";
+    return;
+  }
+
+  try{
+    const data = await firebaseMonsterFarm.loginPlayer(name, pin, {
+      savedProfile: {},
+      inventory: []
+    });
+
+    playerSession = { key: firebaseMonsterFarm.currentPlayerKey, name };
+    localStorage.setItem('tycm_current_player', JSON.stringify(playerSession));
+
+    savedProfile = data.savedProfile || {};
+    inventory = data.inventory || [];
+    history = data.history || [];
+
+    document.getElementById('login-ov').style.display = 'none';
+    refreshLobby();
+
+  }catch(err){
+    status.textContent = err.message;
+  }
+}
+</pre>
+
+<p>ถ้ายังพัง = ปัญหา 90% มาจาก Firestore Rules ไม่ใช่โค้ดแล้ว</p>
+
+</body>
+</html>
