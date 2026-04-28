@@ -223,14 +223,14 @@ input[type=text],input[type=number],select,textarea{font-size:1rem;background:#f
 <div class="login-ov" id="login-ov">
   <div class="login-box">
     <h2>☯ เข้าสู่ฟาร์มสัตว์ปิศาจ</h2>
-    <p>ระบบนี้แยกข้อมูลผู้เล่นแต่ละคน เพื่อให้หลายคนเล่นพร้อมกันได้โดยไม่เขียนทับกัน</p>
-    <div class="fg"><label class="fl">ชื่อตัวละคร / ผู้เล่น</label><input type="text" id="login-name" placeholder="ใส่ชื่อให้ตรงกับตัวละคร"></div>
+    <p>ให้ผู้เล่นสร้าง ID ตัวละครด้วย [ ชื่อตัวละคร ] สำหรับใช้แยกไอเทมที่ได้รับจากผู้เล่นคนอื่นๆ </p>
+    <div class="fg"><label class="fl">ชื่อตัวละคร</label><input type="text" id="login-name" placeholder="ใส่ชื่อให้ตรงกับตัวละคร"></div>
     <div class="fg"><label class="fl">รหัสผู้เล่น</label><input type="password" id="login-pin" placeholder="ตั้งครั้งแรก / ใช้รหัสเดิมครั้งถัดไป"></div>
     <div class="login-actions">
       <button class="btn btn-gold btn-full" onclick="loginPlayer()">เข้าสู่เกม / สร้างผู้เล่น</button>
     </div>
     <div class="login-status" id="login-status"></div>
-    <div class="login-mini">หมายเหตุ: มอนสเตอร์เป็นข้อมูลกลางของเกม ส่วนโปรไฟล์ ไอเทม เหรียญทอง และประวัติส่วนตัวจะแยกตามผู้เล่น ไม่ซิงก์กับเว็บ Inventory ลูกมู</div>
+    <div class="login-mini">หมายเหตุ: เวอร์ชั่นทดลอง หากผลลัพธ์ดี จะอัพเดตมอนสเตอร์ในนี้ และเพิ่มบอสบางชนิดเข้ามาเพื่อให้ผู้เล่นที่ไม่เข้าดิสคอร์ดสามารถทอยเต๋าได้ง่ายขึ้น </div>
   </div>
 </div>
 
@@ -238,7 +238,7 @@ input[type=text],input[type=number],select,textarea{font-size:1rem;background:#f
   <!-- HEADER -->
   <div class="header">
     <h1>⚔ ฟาร์มสัตว์ปิศาจ</h1>
-    <p>MONSTER FARM — TYCM EDITION v2.0</p><div class="player-pill">MULTIPLAYER · แยกข้อมูลผู้เล่น</div>
+    <p>MONSTER FARM — TYCM EDITION v2.0</p><div class="player-pill">MULTIPLAYER Ver.</div>
     <button class="admin-btn" onclick="openAdmin()">🔧 สตาฟ</button>
   </div>
 
@@ -644,11 +644,6 @@ const DEFAULT_MONSTERS = [
 
 const DEFAULT_ITEMS = [
   {id:'cage',name:'กรงสัตว์',icon:'🧺',desc:'จำเป็นสำหรับแอคชั่นจับกุม หากไม่มีจะจับสัตว์ปิศาจไม่สำเร็จ',count:3,effect:'capture_required'},
-  {id:'potion',name:'ยาฟื้นชีพ',icon:'🧪',desc:'ฟื้นฟู HP 30 คะแนน',count:3,effect:'heal30'},
-  {id:'potion2',name:'ยาฟื้นชีพใหญ่',icon:'💉',desc:'ฟื้นฟู HP 60 คะแนน',count:1,effect:'heal60'},
-  {id:'bomb',name:'ระเบิดไฟ',icon:'💣',desc:'สร้างดาเมจ 25 ถึงสัตว์ปิศาจ',count:2,effect:'dmg25'},
-  {id:'shield',name:'โล่มนต์',icon:'🔮',desc:'ลดดาเมจรับ 50% เทิร์นนี้',count:1,effect:'shield50'},
-  {id:'elixir',name:'น้ำปราณ',icon:'⚗️',desc:'ฟื้นฟู HP 15 และเพิ่มโอกาสเต๋าเทิร์นถัดไป',count:1,effect:'elixir'},
 ];
 
 const RARE_ITEMS = [
