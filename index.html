@@ -230,6 +230,13 @@ input[type=text],input[type=number],select,textarea{font-size:1rem;background:#f
 .audit-filter{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
 .audit-small{font-size:.72rem;color:#555;line-height:1.45}
 
+/* ADMIN PLAYER EDITOR */
+.admin-player-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+.admin-player-grid .fg{margin-bottom:0}
+.admin-player-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.admin-player-mini{font-size:.78rem;color:#555;line-height:1.55;margin-top:6px}
+@media(max-width:720px){.admin-player-grid{grid-template-columns:1fr 1fr}}
+
 </style>
 </head>
 <body>
@@ -454,6 +461,7 @@ service cloud.firestore {
       <button class="tab" id="adm-tab-add" onclick="admTab('add')">เพิ่ม/แก้ไข</button>
       <button class="tab" id="adm-tab-items" onclick="admTab('items')">จัดการไอเทม</button>
       <button class="tab" id="adm-tab-audit" onclick="admTab('audit')">ประวัติแอดมิน</button>
+      <button class="tab" id="adm-tab-players" onclick="admTab('players')">จัดการผู้เล่น</button>
     </div>
     <!-- List -->
     <div id="adm-list-panel">
@@ -532,6 +540,19 @@ service cloud.firestore {
       <div class="card-title">ประวัติแอดมิน — ตรวจค่าสเตตัสตอนเริ่มสู้</div>
       <div class="notice">หน้านี้แสดง snapshot ค่าที่ผู้เล่นใช้ในแต่ละรอบ เพื่อดูว่ามีใครกรอกค่าสูงผิดปกติหรือไม่</div>
       <div id="adm-audit-list"></div>
+    </div>
+    <!-- Players Admin -->
+    <div id="adm-players-panel" style="display:none">
+      <div class="card-title">จัดการผู้เล่น — แก้ค่าสเตตัสแทนผู้เล่น</div>
+      <div class="notice">ผู้เล่นแก้โปรไฟล์เองไม่ได้หลังบันทึกครั้งแรก หากกรอกผิด ให้สตาฟเลือกชื่อในหน้านี้แล้วแก้ให้โดยตรง</div>
+      <button class="btn btn-out btn-full" onclick="adminLoadPlayers()">🔄 โหลดรายชื่อผู้เล่น</button>
+      <div class="fg" style="margin-top:8px">
+        <label class="fl">เลือกตัวละคร</label>
+        <select id="admin-player-select" onchange="adminSelectPlayer(this.value)">
+          <option value="">— โหลดรายชื่อก่อน —</option>
+        </select>
+      </div>
+      <div id="admin-player-editor" class="notice">เลือกตัวละครเพื่อแก้ไข</div>
     </div>
   </div>
 </div>
@@ -674,7 +695,8 @@ service cloud.firestore {
             dodge: Number(defaults.savedProfile?.dodge || 0),
             knowledge: Number(defaults.savedProfile?.knowledge || 0),
             gold: Number(defaults.savedProfile?.gold || 0),
-            path: defaults.savedProfile?.path || "other"
+            path: defaults.savedProfile?.path || "other",
+            profileLocked: defaults.savedProfile?.profileLocked === true ? true : false
           },
           inventory: Array.isArray(defaults.inventory) ? defaults.inventory : [],
           history: [],
@@ -722,6 +744,27 @@ service cloud.firestore {
         console.error("loadBattleHistory failed:", err);
         return [];
       }
+    },
+
+    async listPlayers(){
+      try{
+        const snap = await getDocs(collection(db, "monsterFarmPlayers"));
+        return snap.docs.map(d => ({ key: d.id, ...d.data() }))
+          .sort((a,b)=>String(a.savedProfile?.name||'').localeCompare(String(b.savedProfile?.name||''),'th'));
+      }catch(err){
+        console.error("listPlayers failed:", err);
+        throw new Error("โหลดรายชื่อผู้เล่นไม่ได้: " + (err.code || err.message || err));
+      }
+    },
+
+    async adminSavePlayer(playerKey, payload){
+      if(!playerKey) throw new Error("ไม่พบ playerKey");
+      const ref = doc(db, "monsterFarmPlayers", playerKey);
+      await safeSetDoc(ref, {
+        ...payload,
+        updatedAt: serverTimestamp(),
+        adminEditedAt: serverTimestamp()
+      }, { merge: true }, "admin update monsterFarmPlayers/" + playerKey);
     }
   };
 
@@ -1429,7 +1472,7 @@ function setProfileFormLocked(locked){
   const card=document.querySelector('#screen-profile .card');
   if(card) card.classList.toggle('profile-locked',locked);
   if(saveBtn) saveBtn.style.display=locked?'none':'block';
-  if(adminBtn) adminBtn.style.display=locked?'block':'none';
+  if(adminBtn) adminBtn.style.display='none';
   if(note) note.style.display=locked?'block':'none';
 }
 
@@ -1634,13 +1677,14 @@ function closeAdmin(){document.getElementById('admin-modal').classList.remove('s
 function admTab(tab){
   if((tab==='add'||tab==='items') && !requireAdmin()) return;
   admCurrentTab=tab;
-  ['list','add','items','audit'].forEach(t=>{
+  ['list','add','items','audit','players'].forEach(t=>{
     document.getElementById('adm-tab-'+t).classList.toggle('active',t===tab);
     document.getElementById('adm-'+t+'-panel').style.display=t===tab?'block':'none';
   });
   if(tab==='list') renderAdmMonList();
   if(tab==='items') renderAdmItems();
   if(tab==='audit') renderAdminAudit();
+  if(tab==='players') adminLoadPlayers();
 }
 
 
@@ -1678,19 +1722,142 @@ function renderAdminAudit(){
       <td>${Number(h.dmgGiven||0)} / ${Number(h.dmgTaken||0)}</td>
       <td>${escapeHtml(rewards)}</td>
       <td class="${warn?'audit-warn':''}">${warn||'—'}</td>
+      <td><button class="btn btn-out btn-sm" onclick="openAdminPlayerEditor(${JSON.stringify(h.player||'')})">แก้ผู้เล่น</button></td>
     </tr>`;
   }).join('');
   el.innerHTML=filters+`
     <div class="audit-table-wrap">
       <table class="audit-table">
         <thead><tr>
-          <th>เวลา</th><th>ตัวละคร / ผล</th><th>HP เริ่ม</th><th>ธาตุทั้ง 6</th><th>ปราณรวม</th><th>หลบหลีกรวม</th><th>ความรู้รวม</th><th>ทองก่อนรับรางวัล</th><th>เทิร์น</th><th>ดาเมจ ให้/รับ</th><th>รางวัล</th><th>สถานะ</th>
+          <th>เวลา</th><th>ตัวละคร / ผล</th><th>HP เริ่ม</th><th>ธาตุทั้ง 6</th><th>ปราณรวม</th><th>หลบหลีกรวม</th><th>ความรู้รวม</th><th>ทองก่อนรับรางวัล</th><th>เทิร์น</th><th>ดาเมจ ให้/รับ</th><th>รางวัล</th><th>สถานะ</th><th>แก้ไข</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>`;
 }
 
+
+
+
+let adminPlayersCache=[];
+let adminSelectedPlayerKey='';
+
+async function adminLoadPlayers(preselectName=''){
+  const sel=document.getElementById('admin-player-select');
+  const box=document.getElementById('admin-player-editor');
+  if(sel) sel.innerHTML='<option value="">กำลังโหลด...</option>';
+  if(box) box.innerHTML='<div class="notice">กำลังโหลดรายชื่อผู้เล่น...</div>';
+  try{
+    if(!window.firebaseMonsterFarm?.listPlayers) throw new Error('Firebase ยังไม่พร้อม หรือไม่มีฟังก์ชัน listPlayers');
+    adminPlayersCache=await window.firebaseMonsterFarm.listPlayers();
+    if(!adminPlayersCache.length){
+      if(sel) sel.innerHTML='<option value="">ยังไม่มีผู้เล่น</option>';
+      if(box) box.innerHTML='<div class="notice">ยังไม่มีผู้เล่นในระบบ</div>';
+      return;
+    }
+    if(sel){
+      sel.innerHTML='<option value="">— เลือกตัวละคร —</option>'+adminPlayersCache.map(p=>{
+        const name=p.savedProfile?.name || p.currentPlayerName || p.key || 'ไม่ทราบชื่อ';
+        return `<option value="${escapeHtml(p.key)}">${escapeHtml(name)}</option>`;
+      }).join('');
+    }
+    if(preselectName){
+      const found=adminPlayersCache.find(p=>(p.savedProfile?.name||'')===preselectName || p.key===preselectName);
+      if(found && sel){ sel.value=found.key; adminSelectPlayer(found.key); return; }
+    }
+    if(box) box.innerHTML='<div class="notice">เลือกตัวละครเพื่อแก้ไข</div>';
+  }catch(err){
+    console.error(err);
+    if(sel) sel.innerHTML='<option value="">โหลดไม่สำเร็จ</option>';
+    if(box) box.innerHTML=`<div class="notice warn">${escapeHtml(err.message||err)}</div>`;
+  }
+}
+
+function openAdminPlayerEditor(playerName){
+  if(!requireAdmin()) return;
+  admTab('players');
+  setTimeout(()=>adminLoadPlayers(playerName),50);
+}
+
+function adminSelectPlayer(key){
+  adminSelectedPlayerKey=key;
+  const box=document.getElementById('admin-player-editor');
+  if(!box) return;
+  if(!key){ box.innerHTML='<div class="notice">เลือกตัวละครเพื่อแก้ไข</div>'; return; }
+  const doc=adminPlayersCache.find(p=>p.key===key);
+  if(!doc){ box.innerHTML='<div class="notice warn">ไม่พบข้อมูลผู้เล่น</div>'; return; }
+  const p=doc.savedProfile||{};
+  const path=p.path||'other';
+  box.innerHTML=`
+    <div class="mon-admin-card">
+      <div class="mon-admin-name">แก้ไขตัวละคร: ${escapeHtml(p.name||doc.key)}</div>
+      <div class="mon-admin-meta">แก้จากฝั่งแอดมินเท่านั้น ผู้เล่นจะยังถูกล็อกโปรไฟล์หลังบันทึก</div>
+      <div class="admin-player-grid">
+        <div class="fg"><label class="fl">ชื่อผู้เล่น</label><input type="text" id="adm-p-name" value="${escapeHtml(p.name||'')}"></div>
+        <div class="fg"><label class="fl">HP</label><input type="number" id="adm-p-hp" value="${Number(p.hp||100)}"></div>
+        <div class="fg"><label class="fl">เหรียญทอง</label><input type="number" id="adm-p-gold" value="${Number(p.gold||0)}"></div>
+        <div class="fg"><label class="fl">ดิน</label><input type="number" id="adm-p-earth" value="${Number(p.earth||0)}"></div>
+        <div class="fg"><label class="fl">น้ำ</label><input type="number" id="adm-p-water" value="${Number(p.water||0)}"></div>
+        <div class="fg"><label class="fl">ลม</label><input type="number" id="adm-p-wind" value="${Number(p.wind||0)}"></div>
+        <div class="fg"><label class="fl">ไฟ</label><input type="number" id="adm-p-fire" value="${Number(p.fire||0)}"></div>
+        <div class="fg"><label class="fl">ไม้</label><input type="number" id="adm-p-wood" value="${Number(p.wood||0)}"></div>
+        <div class="fg"><label class="fl">ทอง</label><input type="number" id="adm-p-metal" value="${Number(p.metal||0)}"></div>
+        <div class="fg"><label class="fl">ปราณรวม</label><input type="number" id="adm-p-prana" value="${Number(p.prana||0)}"></div>
+        <div class="fg"><label class="fl">หลบหลีกรวม</label><input type="number" id="adm-p-dodge" value="${Number(p.dodge||0)}"></div>
+        <div class="fg"><label class="fl">ความรู้รวม</label><input type="number" id="adm-p-knowledge" value="${Number(p.knowledge||0)}"></div>
+      </div>
+      <div class="fg" style="margin-top:8px"><label class="fl">สายตัวละคร</label>
+        <select id="adm-p-path">
+          ${PATHS.map(x=>`<option value="${x.id}" ${x.id===path?'selected':''}>${x.icon} ${x.name}</option>`).join('')}
+        </select>
+      </div>
+      <div class="admin-player-actions">
+        <button class="btn btn-gold" onclick="adminSaveSelectedPlayer()">💾 บันทึกผู้เล่น</button>
+        <button class="btn btn-out" onclick="adminSelectPlayer('${escapeHtml(key)}')">↺ คืนค่าจากฐานข้อมูล</button>
+      </div>
+      <div class="admin-player-mini">เมื่อกดบันทึก ระบบจะตั้ง <b>profileLocked=true</b> เพื่อไม่ให้ผู้เล่นแก้เอง</div>
+    </div>`;
+}
+
+async function adminSaveSelectedPlayer(){
+  if(!requireAdmin()) return;
+  const key=adminSelectedPlayerKey;
+  const oldDoc=adminPlayersCache.find(p=>p.key===key);
+  if(!key || !oldDoc){ alert('กรุณาเลือกผู้เล่นก่อน'); return; }
+  const oldProfile=oldDoc.savedProfile||{};
+  const newProfile={
+    ...oldProfile,
+    name:document.getElementById('adm-p-name')?.value||oldProfile.name||'ไม่ทราบชื่อ',
+    hp:parseInt(document.getElementById('adm-p-hp')?.value)||100,
+    earth:parseInt(document.getElementById('adm-p-earth')?.value)||0,
+    water:parseInt(document.getElementById('adm-p-water')?.value)||0,
+    wind:parseInt(document.getElementById('adm-p-wind')?.value)||0,
+    fire:parseInt(document.getElementById('adm-p-fire')?.value)||0,
+    wood:parseInt(document.getElementById('adm-p-wood')?.value)||0,
+    metal:parseInt(document.getElementById('adm-p-metal')?.value)||0,
+    prana:parseInt(document.getElementById('adm-p-prana')?.value)||0,
+    dodge:parseInt(document.getElementById('adm-p-dodge')?.value)||0,
+    knowledge:parseInt(document.getElementById('adm-p-knowledge')?.value)||0,
+    gold:parseInt(document.getElementById('adm-p-gold')?.value)||0,
+    path:document.getElementById('adm-p-path')?.value||oldProfile.path||'other',
+    profileLocked:true
+  };
+  try{
+    await window.firebaseMonsterFarm.adminSavePlayer(key,{savedProfile:newProfile});
+    if(playerSession?.key===key){
+      savedProfile=newProfile;
+      selectedPath=newProfile.path||'other';
+      save();
+      loadProfileForm();
+      refreshLobby();
+    }
+    alert('บันทึกข้อมูลผู้เล่นแล้ว');
+    await adminLoadPlayers(newProfile.name);
+  }catch(err){
+    console.error(err);
+    alert(err.message||'บันทึกไม่สำเร็จ');
+  }
+}
 
 function renderAdmMonList(){
   const el=document.getElementById('adm-mon-list');
@@ -1968,7 +2135,7 @@ async function loginPlayer(){
   }
   try{
     const defaults={
-      savedProfile:{name,hp:100,earth:0,water:0,wind:0,fire:0,wood:0,metal:0,prana:0,dodge:0,knowledge:0,gold:0,path:'other'},
+      savedProfile:{name,hp:100,earth:0,water:0,wind:0,fire:0,wood:0,metal:0,prana:0,dodge:0,knowledge:0,gold:0,path:'other',profileLocked:false},
       inventory:JSON.parse(JSON.stringify(DEFAULT_ITEMS)),
       history:[]
     };
