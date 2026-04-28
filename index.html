@@ -1569,16 +1569,73 @@ function admDelMon(idx){
 
 function renderAdmItems(){
   const el=document.getElementById('adm-items-list');
-  el.innerHTML=inventory.map((it,i)=>`
+
+  if(!inventory.length){
+    el.innerHTML='<div class="notice">ยังไม่มีไอเทม</div>';
+    return;
+  }
+
+  el.innerHTML = inventory.map((it,i)=>`
     <div class="mon-admin-card">
-      <div class="mon-admin-name">${it.icon} ${it.name} — คงเหลือ: ${it.count}</div>
-      <div class="mon-admin-meta">${it.desc||''}</div>
-    </div>`).join('');
-  // Fill selector
-  const sel=document.getElementById('adm-item-sel');
-  sel.innerHTML=inventory.map(it=>`<option value="${it.id}">${it.icon} ${it.name}</option>`).join('');
+      
+      <div class="fr3">
+        <input type="text" value="${it.icon}" id="it-icon-${i}">
+        <input type="text" value="${it.name}" id="it-name-${i}">
+        <input type="number" value="${it.count}" id="it-count-${i}">
+      </div>
+
+      <textarea id="it-desc-${i}">${it.desc||''}</textarea>
+
+      <div style="display:flex;gap:5px;margin-top:6px">
+        <button class="btn btn-gold btn-sm" onclick="saveItem(${i})">💾 บันทึก</button>
+        <button class="btn btn-out btn-sm" onclick="addQty(${i},1)">+1</button>
+        <button class="btn btn-out btn-sm" onclick="addQty(${i},-1)">-1</button>
+        <button class="btn btn-red btn-sm" onclick="deleteItem(${i})">🗑 ลบ</button>
+      </div>
+
+    </div>
+  `).join('');
+}
+function saveItem(i){
+  const it = inventory[i];
+
+  it.icon = document.getElementById(`it-icon-${i}`).value;
+  it.name = document.getElementById(`it-name-${i}`).value;
+  it.count = parseInt(document.getElementById(`it-count-${i}`).value)||0;
+  it.desc = document.getElementById(`it-desc-${i}`).value;
+
+  save();
+  renderAdmItems();
 }
 
+function addQty(i,delta){
+  inventory[i].count = Math.max(0,(inventory[i].count||0)+delta);
+  save();
+  renderAdmItems();
+}
+
+function deleteItem(i){
+  if(!confirm("ลบไอเทมนี้?")) return;
+  inventory.splice(i,1);
+  save();
+  renderAdmItems();
+}
+
+<button class="btn btn-gold btn-full" onclick="createItem()">➕ สร้างไอเทมใหม่</button>
+
+function createItem(){
+  inventory.push({
+    id:'item_'+Date.now(),
+    name:'ไอเทมใหม่',
+    icon:'📦',
+    desc:'',
+    count:0,
+    effect:'custom'
+  });
+
+  save();
+  renderAdmItems();
+}
 function admAddItem(){
   const id=document.getElementById('adm-item-sel').value;
   const qty=parseInt(document.getElementById('adm-item-qty').value)||1;
