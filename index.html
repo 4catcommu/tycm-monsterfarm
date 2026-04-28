@@ -212,14 +212,33 @@ input[type=text],input[type=number],select,textarea{font-size:1rem;background:#f
 /* FINAL MERGE FIXES */
 .drop-rate-row input.drop-rate{font-weight:900;text-align:center}
 .hist-filter{display:flex;gap:6px;flex-wrap:wrap}
+/* MULTIPLAYER LOGIN */
+.login-ov{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9999;display:flex;align-items:center;justify-content:center;padding:18px}
+.login-box{width:min(460px,94vw);background:linear-gradient(180deg,#fffdf7,#f4ecdd);border:3px double #111;border-radius:18px;padding:20px;box-shadow:0 18px 40px rgba(0,0,0,.28);color:#111}
+.login-box h2{font-size:1.35rem;margin-bottom:8px;color:#111;text-align:center}.login-box p{font-size:.92rem;color:#444;line-height:1.55;margin-bottom:12px;text-align:center}.login-box .fg{margin-bottom:10px}.login-actions{display:grid;grid-template-columns:1fr;gap:8px}.login-mini{font-size:.8rem;color:#555;line-height:1.5;margin-top:10px}.login-status{font-size:.82rem;color:#8b0000;min-height:20px;text-align:center;margin-top:8px}.player-pill{display:inline-flex;align-items:center;gap:6px;border:2px solid #111;background:#fff;padding:3px 8px;font-size:.78rem;font-weight:900;margin-top:6px}
+
 </style>
 </head>
 <body>
+<div class="login-ov" id="login-ov">
+  <div class="login-box">
+    <h2>☯ เข้าสู่ฟาร์มสัตว์ปิศาจ</h2>
+    <p>ระบบนี้แยกข้อมูลผู้เล่นแต่ละคน เพื่อให้หลายคนเล่นพร้อมกันได้โดยไม่เขียนทับกัน</p>
+    <div class="fg"><label class="fl">ชื่อตัวละคร / ผู้เล่น</label><input type="text" id="login-name" placeholder="ใส่ชื่อให้ตรงกับตัวละคร"></div>
+    <div class="fg"><label class="fl">รหัสผู้เล่น</label><input type="password" id="login-pin" placeholder="ตั้งครั้งแรก / ใช้รหัสเดิมครั้งถัดไป"></div>
+    <div class="login-actions">
+      <button class="btn btn-gold btn-full" onclick="loginPlayer()">เข้าสู่เกม / สร้างผู้เล่น</button>
+    </div>
+    <div class="login-status" id="login-status"></div>
+    <div class="login-mini">หมายเหตุ: มอนสเตอร์เป็นข้อมูลกลางของเกม ส่วนโปรไฟล์ ไอเทม เหรียญทอง และประวัติส่วนตัวจะแยกตามผู้เล่น ไม่ซิงก์กับเว็บ Inventory ลูกมู</div>
+  </div>
+</div>
+
 <div class="app">
   <!-- HEADER -->
   <div class="header">
     <h1>⚔ ฟาร์มสัตว์ปิศาจ</h1>
-    <p>MONSTER FARM — TYCM EDITION v2.0</p>
+    <p>MONSTER FARM — TYCM EDITION v2.0</p><div class="player-pill">MULTIPLAYER · แยกข้อมูลผู้เล่น</div>
     <button class="admin-btn" onclick="openAdmin()">🔧 สตาฟ</button>
   </div>
 
@@ -379,8 +398,7 @@ input[type=text],input[type=number],select,textarea{font-size:1rem;background:#f
   <!-- ══════════ INVENTORY ══════════ -->
   <div id="screen-inventory" class="screen">
     <div class="card">
-      <div class="card-title">คลังไอเทม <span style="font-size:0.65rem;color:var(--muted)">เชื่อมกับ Inventory ลูกมู</span></div>
-      <button class="btn btn-out btn-sm" onclick="syncInventoryFromLhumu()" style="margin-bottom:8px">↻ ซิงก์คลังลูกมู</button>
+      <div class="card-title">คลังไอเทม <span style="font-size:0.65rem;color:var(--muted)">แยกตามผู้เล่น</span></div>
       <div class="inv-grid" id="inv-grid"></div>
     </div>
     <div class="card">
@@ -501,10 +519,10 @@ input[type=text],input[type=number],select,textarea{font-size:1rem;background:#f
 </div>
 
 
-<!-- Firebase / Firestore Connector -->
+<!-- Firebase / Firestore Connector: Multiplayer per-player data -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-  import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+  import { getFirestore, doc, getDoc, setDoc, serverTimestamp, collection, addDoc, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyCxJYD88-ybJKmoCmk0JewZ22UIOCueP7Q",
@@ -518,98 +536,76 @@ input[type=text],input[type=number],select,textarea{font-size:1rem;background:#f
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
+  const globalRef = doc(db, "monsterFarm", "globalConfig");
 
-  // เก็บสถานะเกมรวมไว้ที่เอกสารเดียวก่อน เพื่อให้ต่อจากโค้ดเดิมง่ายที่สุด
-  const gameStateRef = doc(db, "monsterFarm", "mainState");
+  function normalizeName(name){ return String(name||'').trim().replace(/\s+/g,' '); }
+  function playerKeyFromName(name){ return normalizeName(name).toLowerCase().replace(/[\/\\#?\[\].]/g,'-').replace(/\s+/g,'_').slice(0,80); }
+  function simpleHash(str){ let h=2166136261; const s=String(str||''); for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return (h>>>0).toString(16); }
 
   window.firebaseMonsterFarm = {
-    async loadGameState() {
-      const snap = await getDoc(gameStateRef);
-      if (!snap.exists()) return null;
+    currentPlayerKey:null,
+    currentPlayerName:null,
+
+    async loadGlobalState(){
+      const snap = await getDoc(globalRef);
+      if(!snap.exists()) return null;
       return snap.data();
     },
 
-    async saveGameState(data) {
-      await setDoc(gameStateRef, {
-        ...data,
-        updatedAt: serverTimestamp()
-      }, { merge: true });
+    async saveGlobalState(data){
+      await setDoc(globalRef,{...data,updatedAt:serverTimestamp()},{merge:true});
+    },
+
+    async loginPlayer(playerName,pin,defaults){
+      const name=normalizeName(playerName);
+      const rawPin=String(pin||'');
+      if(!name) throw new Error('กรุณาใส่ชื่อตัวละคร');
+      if(rawPin.length<3) throw new Error('รหัสผู้เล่นควรมีอย่างน้อย 3 ตัวอักษร');
+      const key=playerKeyFromName(name);
+      const ref=doc(db,'monsterFarmPlayers',key);
+      const snap=await getDoc(ref);
+      const pinHash=simpleHash(rawPin);
+      this.currentPlayerKey=key;
+      this.currentPlayerName=name;
+      if(!snap.exists()){
+        const data={
+          pinHash,
+          savedProfile:{...(defaults.savedProfile||{}),name:name},
+          inventory:Array.isArray(defaults.inventory)?defaults.inventory:[],
+          history:[],
+          createdAt:serverTimestamp(),
+          updatedAt:serverTimestamp()
+        };
+        await setDoc(ref,data);
+        return data;
+      }
+      const data=snap.data();
+      if(data.pinHash!==pinHash) throw new Error('รหัสผู้เล่นไม่ถูกต้อง หรือชื่อนี้ถูกใช้ไปแล้ว');
+      return data;
+    },
+
+    async savePlayerState(data){
+      if(!this.currentPlayerKey) return;
+      const ref=doc(db,'monsterFarmPlayers',this.currentPlayerKey);
+      await setDoc(ref,{...data,updatedAt:serverTimestamp()},{merge:true});
+    },
+
+    async addBattleHistory(item){
+      const payload={...item,ts:Date.now(),createdAt:serverTimestamp()};
+      await addDoc(collection(db,'monsterFarmBattleHistory'),payload);
+    },
+
+    async loadBattleHistory(){
+      const q=query(collection(db,'monsterFarmBattleHistory'),orderBy('ts','desc'),limit(300));
+      const snap=await getDocs(q);
+      return snap.docs.map(d=>({id:d.id,...d.data()}));
     }
   };
 
   window.firebaseMonsterFarmReady = true;
-  console.log("✅ Firebase Monster Farm connected");
+  console.log("✅ Firebase Monster Farm multiplayer connected");
 </script>
 
-<!-- Inventory Project Bridge: เชื่อมกับเว็บคลังผู้เล่นอีก Firebase Project -->
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-  import { getFirestore, doc, getDoc, collection, addDoc, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
-
-  const inventoryFirebaseConfig = {
-    apiKey: "AIzaSyDaGO2hV8h-Ui70lV_UuBDbAxkbXpNdgAM",
-    authDomain: "tycm-inventory.firebaseapp.com",
-    projectId: "tycm-inventory",
-    storageBucket: "tycm-inventory.firebasestorage.app",
-    messagingSenderId: "212603900758",
-    appId: "1:212603900758:web:feda30470a3ab680047cf7"
-  };
-
-  const inventoryApp = initializeApp(inventoryFirebaseConfig, "inventoryProject");
-  const inventoryDb = getFirestore(inventoryApp);
-  const DEFAULT_SLOTS_FOR_BRIDGE = 5;
-
-  function normalizeName(name){return String(name||'').trim().replace(/\s+/g,' ');}
-  function playerDocIdFromName(name){return normalizeName(name).toLowerCase().replace(/[\/\\#?\[\].]/g,'-').replace(/\s+/g,'_').slice(0,80);}
-  function emptyBags(slotCount=DEFAULT_SLOTS_FOR_BRIDGE){const o={}; for(let i=0;i<slotCount;i++) o[String(i)]=null; return o;}
-  function getSlotCount(p){return Math.max(1,Number(p?.slotCount||p?.maxSlots||DEFAULT_SLOTS_FOR_BRIDGE));}
-  function cleanItem(item){ if(!item||typeof item!=='object') return null; return {name:String(item.name||''),qty:Number(item.qty||1),unit:String(item.unit||''),note:String(item.note||''),stone:String(item.stone||'')}; }
-  function normalizeBags(bags,slotCount=DEFAULT_SLOTS_FOR_BRIDGE){ const o=emptyBags(slotCount); if(!bags) return o; if(Array.isArray(bags)){ for(let i=0;i<slotCount;i++) o[String(i)]=Array.isArray(bags[i])?cleanItem(bags[i][0]):cleanItem(bags[i]); return o;} for(let i=0;i<slotCount;i++){const k=String(i); o[k]=Array.isArray(bags[k])?cleanItem(bags[k][0]):cleanItem(bags[k]);} return o; }
-  function timeStr(){return new Date().toLocaleString('th-TH',{hour12:false,day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});}
-
-  window.inventoryBridge = {
-    async loadByPlayerName(playerName){
-      const name = normalizeName(playerName); if(!name) return [];
-      const ref = doc(inventoryDb,'players',playerDocIdFromName(name));
-      const snap = await getDoc(ref); if(!snap.exists()) return [];
-      const p = snap.data(); const slotCount = getSlotCount(p); const bags = normalizeBags(p.bags, slotCount); const items = [];
-      for(let i=0;i<slotCount;i++){ const item = bags[String(i)]; if(item && item.name && Number(item.qty)>0) items.push({...item, bagIndex:i}); }
-      return items;
-    },
-    async withdrawItem(playerName, itemName, qty=1, note='ใช้ในสัตว์ปิศาจฟาร์ม'){
-      const name = normalizeName(playerName); const target = normalizeName(itemName); const amount = Math.max(1, Number(qty)||1);
-      if(!name) throw new Error('ยังไม่ได้ตั้งชื่อผู้เล่นให้ตรงกับคลังลูกมู'); if(!target) throw new Error('ไม่พบชื่อไอเทม');
-      const ref = doc(inventoryDb,'players',playerDocIdFromName(name)); let logData = null;
-      await runTransaction(inventoryDb, async(transaction)=>{
-        const snap = await transaction.get(ref); if(!snap.exists()) throw new Error(`ไม่พบผู้เล่น “${name}” ในคลังลูกมู`);
-        const old = snap.data(); const slotCount = getSlotCount(old); const bags = normalizeBags(old.bags, slotCount); let remain = amount;
-        for(let i=0;i<slotCount;i++){ const key=String(i); const item=bags[key]; if(!item) continue; if(normalizeName(item.name)!==target) continue; const take=Math.min(Number(item.qty||0),remain); const left=Number(item.qty||0)-take; bags[key]=left<=0?null:{...item,qty:left}; remain-=take; if(remain<=0) break; }
-        if(remain>0) throw new Error(`ไอเทม “${target}” ในคลังลูกมูไม่พอ`);
-        transaction.set(ref,{name:String(old.name||name),order:Number(old.order||Date.now()),slotCount:Number(slotCount),avatarUrl:String(old.avatarUrl||''),currency:Number(old.currency||0),bags});
-        logData={playerName:String(old.name||name),itemName:target,amount};
-      });
-      await addDoc(collection(inventoryDb,'logs'),{time:timeStr(),ts:Date.now(),playerName:logData.playerName,bagIdx:null,type:'withdraw',itemsText:String(`${logData.itemName}−${logData.amount} | ${note}`)});
-      return true;
-    },
-    async depositItem(playerName, itemName, qty=1, unit='', note='ได้รับจากสัตว์ปิศาจฟาร์ม'){
-      const name = normalizeName(playerName); const target = normalizeName(itemName); let amount = Math.max(1, Number(qty)||1);
-      if(!name) throw new Error('ยังไม่ได้ตั้งชื่อผู้เล่นให้ตรงกับคลังลูกมู'); if(!target) throw new Error('ไม่พบชื่อไอเทม');
-      const ref = doc(inventoryDb,'players',playerDocIdFromName(name)); let logData = null;
-      await runTransaction(inventoryDb, async(transaction)=>{
-        const snap = await transaction.get(ref); let old = {name, order:Date.now(), slotCount:DEFAULT_SLOTS_FOR_BRIDGE, avatarUrl:'', currency:0, bags:emptyBags(DEFAULT_SLOTS_FOR_BRIDGE)}; if(snap.exists()) old=snap.data();
-        const slotCount = getSlotCount(old); const bags = normalizeBags(old.bags, slotCount);
-        for(let i=0;i<slotCount && amount>0;i++){ const key=String(i); const item=bags[key]; if(item && normalizeName(item.name)===target && String(item.unit||'')===String(unit||'') && Number(item.qty||0)<10){ const add=Math.min(10-Number(item.qty||0), amount); bags[key]={...item,qty:Number(item.qty||0)+add,note:item.note||note}; amount-=add; } }
-        for(let i=0;i<slotCount && amount>0;i++){ const key=String(i); if(!bags[key]){ const add=Math.min(10,amount); bags[key]={name:target,qty:add,unit:String(unit||''),note:String(note||''),stone:''}; amount-=add; } }
-        if(amount>0) throw new Error(`กระเป๋าของ “${name}” เต็ม ไม่สามารถเพิ่ม “${target}” ได้ครบ`);
-        transaction.set(ref,{name:String(old.name||name),order:Number(old.order||Date.now()),slotCount:Number(slotCount),avatarUrl:String(old.avatarUrl||''),currency:Number(old.currency||0),bags});
-        logData={playerName:String(old.name||name),itemName:target,amount:Number(qty)||1};
-      });
-      await addDoc(collection(inventoryDb,'logs'),{time:timeStr(),ts:Date.now(),playerName:logData.playerName,bagIdx:null,type:'deposit',itemsText:String(`${logData.itemName}×${logData.amount}${unit||''} | ${note}`)});
-      return true;
-    }
-  };
-  console.log('✅ Inventory Project Bridge connected');
-</script>
 
 <script>
 // ══════════════════════════════════════════════
@@ -680,25 +676,27 @@ let B = {active:false,turn:0,playerHP:0,playerMaxHP:0,monHP:0,monMaxHP:0,
   trapBonus:0,luckyTurn:false};
 let curMon = null;
 let pendingAction = null;
+let playerSession = JSON.parse(localStorage.getItem('tycm_current_player')||'null');
+let allHistory = [];
 
 function save(){
-  // สำรองไว้ในเครื่องเหมือนเดิม เผื่อเน็ตหลุดหรือ Firebase ยังไม่พร้อม
-  localStorage.setItem('lhumu_profile',JSON.stringify(savedProfile));
+  const localPrefix = playerSession?.key ? `tycm_${playerSession.key}_` : 'lhumu_';
+  localStorage.setItem(localPrefix+'profile',JSON.stringify(savedProfile));
+  localStorage.setItem(localPrefix+'inv',JSON.stringify(inventory));
+  localStorage.setItem(localPrefix+'history',JSON.stringify(history));
   localStorage.setItem('lhumu_monsters',JSON.stringify(monsters));
-  localStorage.setItem('lhumu_inv',JSON.stringify(inventory));
-  localStorage.setItem('lhumu_history',JSON.stringify(history));
 
-  // ซิงก์ขึ้น Firestore
   if(window.firebaseMonsterFarm){
-    window.firebaseMonsterFarm.saveGameState({
-      savedProfile,
-      monsters,
-      inventory,
-      history
-    }).catch(err=>{
-      console.error('บันทึกขึ้น Firebase ไม่สำเร็จ:', err);
-      alert('บันทึกในเครื่องสำเร็จ แต่ซิงก์ Firebase ไม่สำเร็จ: ' + err.message);
-    });
+    if(window.firebaseMonsterFarm.currentPlayerKey){
+      window.firebaseMonsterFarm.savePlayerState({
+        savedProfile,
+        inventory,
+        history
+      }).catch(err=>{
+        console.error('บันทึกผู้เล่นขึ้น Firebase ไม่สำเร็จ:', err);
+        alert('บันทึกในเครื่องสำเร็จ แต่ซิงก์ข้อมูลผู้เล่นไม่สำเร็จ: '+err.message);
+      });
+    }
   }
 }
 
@@ -749,22 +747,22 @@ function dominantElements(profile){const keys=['earth','water','wind','fire','wo
 function hasItem(id){return inventory.some(i=>i.id===id && (i.count||0)>0);}
 function addItemCount(id, delta){let it=inventory.find(i=>i.id===id);if(!it){const base=[...DEFAULT_ITEMS,...RARE_ITEMS].find(x=>x.id===id)||{id,name:id,icon:'📦',desc:''};it={...base,count:0};inventory.push(it);}it.count=Math.max(0,(it.count||0)+delta);}
 
-function itemIdFromName(name){ const base=[...DEFAULT_ITEMS,...RARE_ITEMS].find(x=>x.name===name); if(base) return base.id; return 'ext_'+String(name||'item').trim().toLowerCase().replace(/[^a-z0-9ก-๙]+/gi,'_').slice(0,60); }
-function syncLocalInventoryFromExternalItems(externalItems){
-  if(!Array.isArray(externalItems)) return;
-  const known=[...DEFAULT_ITEMS,...RARE_ITEMS]; const counts={};
-  externalItems.forEach(it=>{ if(!it||!it.name) return; const id=itemIdFromName(it.name); if(!counts[id]) counts[id]={id,name:it.name,qty:0,unit:it.unit||''}; counts[id].qty += Number(it.qty||0); });
-  inventory = known.map(base=>({...base,count:Number(counts[base.id]?.qty||0)}));
-  Object.values(counts).forEach(x=>{ if(!known.some(k=>k.id===x.id)) inventory.push({id:x.id,name:x.name,icon:'📦',desc:'ไอเทมจากคลังลูกมู',count:x.qty,effect:'material'}); });
-  localStorage.setItem('lhumu_inv',JSON.stringify(inventory));
-}
+function itemIdFromName(name){ const base=[...DEFAULT_ITEMS,...RARE_ITEMS].find(x=>x.name===name); if(base) return base.id; return 'drop_'+String(name||'item').trim().toLowerCase().replace(/[^a-z0-9ก-๙]+/gi,'_').slice(0,60); }
 async function syncInventoryFromLhumu(){
-  if(!window.inventoryBridge || !savedProfile?.name) return false;
-  try{ const externalItems = await window.inventoryBridge.loadByPlayerName(savedProfile.name); syncLocalInventoryFromExternalItems(externalItems); renderInventory(); if(document.getElementById('adm-items-list')) renderAdmItems(); if(typeof updateTrapBtn==='function') updateTrapBtn(); console.log('🎒 ซิงก์ inventory จากคลังลูกมูสำเร็จ'); return true; }
-  catch(err){ console.warn('ซิงก์ inventory ลูกมูไม่สำเร็จ:', err); return false; }
+  // ปิดการซิงก์กับเว็บ Inventory ลูกมู: inventory ในเกมนี้แยกตามผู้เล่น
+  renderInventory();
+  if(document.getElementById('adm-items-list')) renderAdmItems();
+  if(typeof updateTrapBtn==='function') updateTrapBtn();
+  return true;
 }
-async function withdrawExternalItemByName(itemName, qty=1, note='ใช้ในสัตว์ปิศาจฟาร์ม'){ if(!window.inventoryBridge || !savedProfile?.name) return false; await window.inventoryBridge.withdrawItem(savedProfile.name,itemName,qty,note); await syncInventoryFromLhumu(); return true; }
-async function depositExternalItemByName(itemName, qty=1, unit='', note='ได้รับจากสัตว์ปิศาจฟาร์ม'){ if(!window.inventoryBridge || !savedProfile?.name) return false; await window.inventoryBridge.depositItem(savedProfile.name,itemName,qty,unit,note); await syncInventoryFromLhumu(); return true; }
+async function withdrawExternalItemByName(itemName, qty=1, note='ใช้ในสัตว์ปิศาจฟาร์ม'){
+  // ไม่ซิงก์เว็บอื่น ใช้ inventory ภายในเกมแทน
+  return true;
+}
+async function depositExternalItemByName(itemName, qty=1, unit='', note='ได้รับจากสัตว์ปิศาจฟาร์ม'){
+  // ไม่ซิงก์เว็บอื่น รางวัลจะถูกเพิ่มใน inventory ภายในเกมโดย generateRewards อยู่แล้ว
+  return true;
+}
 
 // ══════════════════════════════════════════════
 //  LOBBY
@@ -1266,6 +1264,11 @@ async function endBattleResult(outcome){
   };
   history.unshift(hItem);
   if(history.length>50) history=history.slice(0,50);
+  allHistory.unshift(hItem);
+  if(allHistory.length>300) allHistory=allHistory.slice(0,300);
+  if(window.firebaseMonsterFarm?.addBattleHistory){
+    await window.firebaseMonsterFarm.addBattleHistory(hItem).catch(err=>console.warn('บันทึกประวัติกลางไม่สำเร็จ:',err));
+  }
   save();
 
   document.getElementById('battle-arena').style.display='none';
@@ -1335,7 +1338,7 @@ function saveProfile(){
   msg.textContent='✓ บันทึกสำเร็จ!';setTimeout(()=>msg.textContent='',2000);
   renderProfilePreview();
   refreshLobby();
-  syncInventoryFromLhumu();
+  renderInventory();
 }
 
 function renderProfilePreview(){
@@ -1382,9 +1385,10 @@ function setHistoryFilter(name){historyFilter=name;renderHistory();}
 // ══════════════════════════════════════════════
 function renderHistory(){
   const el=document.getElementById('hist-list');
-  if(!history.length){el.innerHTML='<div class="notice">ยังไม่มีประวัติ</div>';return;}
-  const players=[...new Set(history.map(h=>h.player||'ไม่ทราบชื่อตัวละคร'))];
-  const filtered = historyFilter==='all' ? history : history.filter(h=>(h.player||'ไม่ทราบชื่อตัวละคร')===historyFilter);
+  const sourceHistory = allHistory.length ? allHistory : history;
+  if(!sourceHistory.length){el.innerHTML='<div class="notice">ยังไม่มีประวัติ</div>';return;}
+  const players=[...new Set(sourceHistory.map(h=>h.player||'ไม่ทราบชื่อตัวละคร'))];
+  const filtered = historyFilter==='all' ? sourceHistory : sourceHistory.filter(h=>(h.player||'ไม่ทราบชื่อตัวละคร')===historyFilter);
   const filterUI=`
     <div class="card" style="padding:.65rem;margin-bottom:.65rem">
       <div class="card-title">แยกดูตามตัวละคร</div>
@@ -1556,12 +1560,16 @@ function admSaveMon(){
     drops:dropTable.map(d=>d.name), // เก็บชื่อไว้เพื่อรองรับโค้ดเก่าบางจุด
   };
   if(idx<0) monsters.push(mon); else monsters[idx]=mon;
-  save();renderMonsterSelect();admTab('list');
+  save();
+  if(window.firebaseMonsterFarm?.saveGlobalState){window.firebaseMonsterFarm.saveGlobalState({monsters}).catch(err=>alert('บันทึกมอนสเตอร์กลางไม่สำเร็จ: '+err.message));}
+  renderMonsterSelect();admTab('list');
 }
 
 function admDelMon(idx){
   if(!confirm('ลบสัตว์ปิศาจนี้?')) return;
-  monsters.splice(idx,1);save();renderMonsterSelect();renderAdmMonList();
+  monsters.splice(idx,1);save();
+  if(window.firebaseMonsterFarm?.saveGlobalState){window.firebaseMonsterFarm.saveGlobalState({monsters}).catch(err=>alert('บันทึกมอนสเตอร์กลางไม่สำเร็จ: '+err.message));}
+  renderMonsterSelect();renderAdmMonList();
 }
 
 function renderAdmItems(){
@@ -1588,39 +1596,61 @@ function admAddItem(){
 // ══════════════════════════════════════════════
 async function loadFromFirebase(){
   if(!window.firebaseMonsterFarm) return;
-
   try{
-    const cloud = await window.firebaseMonsterFarm.loadGameState();
-
-    // ถ้า Firestore ยังไม่มีข้อมูล ให้ seed จากค่าปัจจุบันขึ้นไปก่อน
+    const cloud = await window.firebaseMonsterFarm.loadGlobalState();
     if(!cloud){
-      await window.firebaseMonsterFarm.saveGameState({
-        savedProfile,
-        monsters,
-        inventory,
-        history
-      });
-      console.log('🌱 Seed ข้อมูลเริ่มต้นขึ้น Firebase แล้ว');
-      return;
+      await window.firebaseMonsterFarm.saveGlobalState({monsters});
+      console.log('🌱 Seed ข้อมูลมอนสเตอร์กลางขึ้น Firebase แล้ว');
+    }else{
+      if(Array.isArray(cloud.monsters)) monsters = cloud.monsters;
+      localStorage.setItem('lhumu_monsters',JSON.stringify(monsters));
+      console.log('☁️ โหลดข้อมูลมอนสเตอร์กลางจาก Firebase สำเร็จ');
     }
-
-    // ถ้ามีข้อมูลบน Firebase ให้โหลดลงมาใช้ในเกม
-    if(cloud.savedProfile !== undefined) savedProfile = cloud.savedProfile;
-    if(Array.isArray(cloud.monsters)) monsters = cloud.monsters;
-    if(Array.isArray(cloud.inventory)) inventory = cloud.inventory;
-    if(Array.isArray(cloud.history)) history = cloud.history;
-    selectedPath = savedProfile?.path || null;
-
-    // สำรองลง localStorage ด้วย เพื่อเปิดครั้งต่อไปได้ไวขึ้น
-    localStorage.setItem('lhumu_profile',JSON.stringify(savedProfile));
-    localStorage.setItem('lhumu_monsters',JSON.stringify(monsters));
-    localStorage.setItem('lhumu_inv',JSON.stringify(inventory));
-    localStorage.setItem('lhumu_history',JSON.stringify(history));
-
-    console.log('☁️ โหลดข้อมูลจาก Firebase สำเร็จ');
+    if(window.firebaseMonsterFarm.loadBattleHistory){
+      allHistory = await window.firebaseMonsterFarm.loadBattleHistory().catch(()=>[]);
+    }
   }catch(err){
     console.error('โหลด Firebase ไม่สำเร็จ:', err);
     alert('โหลด Firebase ไม่สำเร็จ จะใช้ข้อมูลในเครื่องก่อน: ' + err.message);
+  }
+}
+
+async function loginPlayer(){
+  const name=document.getElementById('login-name')?.value.trim()||'';
+  const pin=document.getElementById('login-pin')?.value||'';
+  const status=document.getElementById('login-status');
+  if(status) status.textContent='กำลังเข้าสู่ระบบ...';
+  try{
+    const defaults={
+      savedProfile:{name,hp:100,earth:0,water:0,wind:0,fire:0,wood:0,metal:0,prana:0,dodge:0,knowledge:0,gold:0,path:'other'},
+      inventory:JSON.parse(JSON.stringify(DEFAULT_ITEMS)),
+      history:[]
+    };
+    const data=await window.firebaseMonsterFarm.loginPlayer(name,pin,defaults);
+    const key=window.firebaseMonsterFarm.currentPlayerKey;
+    playerSession={key,name};
+    localStorage.setItem('tycm_current_player',JSON.stringify(playerSession));
+
+    savedProfile=data.savedProfile || defaults.savedProfile;
+    inventory=Array.isArray(data.inventory)?data.inventory:defaults.inventory;
+    history=Array.isArray(data.history)?data.history:[];
+    selectedPath=savedProfile?.path||'other';
+
+    localStorage.setItem(`tycm_${key}_profile`,JSON.stringify(savedProfile));
+    localStorage.setItem(`tycm_${key}_inv`,JSON.stringify(inventory));
+    localStorage.setItem(`tycm_${key}_history`,JSON.stringify(history));
+
+    const ov=document.getElementById('login-ov');
+    if(ov) ov.style.display='none';
+    renderPathPicker();
+    loadProfileForm();
+    refreshLobby();
+    renderMonsterSelect();
+    renderInventory();
+    renderHistory();
+    save();
+  }catch(err){
+    if(status) status.textContent=err.message||'เข้าสู่ระบบไม่สำเร็จ';
   }
 }
 
@@ -1629,12 +1659,12 @@ async function initApp(){
   document.getElementById('btn-purify').style.display='none';
   document.getElementById('btn-array').style.display='none';
   await loadFromFirebase();
-  await syncInventoryFromLhumu();
   renderPathPicker();
-  if(savedProfile){loadProfileForm();refreshLobby();}
   renderMonsterSelect();
   renderInventory();
   renderHistory();
+  const ln=document.getElementById('login-name');
+  if(ln && playerSession?.name) ln.value=playerSession.name;
 }
 
 initApp();
