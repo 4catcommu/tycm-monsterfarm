@@ -217,6 +217,19 @@ input[type=text],input[type=number],select,textarea{font-size:1rem;background:#f
 .login-box{width:min(460px,94vw);background:linear-gradient(180deg,#fffdf7,#f4ecdd);border:3px double #111;border-radius:18px;padding:20px;box-shadow:0 18px 40px rgba(0,0,0,.28);color:#111}
 .login-box h2{font-size:1.35rem;margin-bottom:8px;color:#111;text-align:center}.login-box p{font-size:.92rem;color:#444;line-height:1.55;margin-bottom:12px;text-align:center}.login-box .fg{margin-bottom:10px}.login-actions{display:grid;grid-template-columns:1fr;gap:8px}.login-mini{font-size:.8rem;color:#555;line-height:1.5;margin-top:10px}.login-status{font-size:.82rem;color:#8b0000;min-height:20px;text-align:center;margin-top:8px}.player-pill{display:inline-flex;align-items:center;gap:6px;border:2px solid #111;background:#fff;padding:3px 8px;font-size:.78rem;font-weight:900;margin-top:6px}
 
+
+/* ADMIN AUDIT + PROFILE LOCK */
+.profile-lock-note{font-size:.82rem;color:#555;line-height:1.55;margin-top:8px;padding:8px;border:1px dashed #111;background:#fff}
+.profile-locked input,.profile-locked select,.profile-locked textarea{opacity:.72}
+.audit-table-wrap{overflow-x:auto;border:2px solid #111;background:#fff;margin-top:8px}
+.audit-table{width:100%;border-collapse:collapse;font-size:.78rem;min-width:980px}
+.audit-table th{background:#111;color:#fff;padding:7px 8px;text-align:left;white-space:nowrap}
+.audit-table td{border-bottom:1px solid rgba(0,0,0,.18);padding:7px 8px;vertical-align:top}
+.audit-table tr:hover td{background:#f2eadc}
+.audit-warn{font-weight:900;color:#8b0000}
+.audit-filter{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.audit-small{font-size:.72rem;color:#555;line-height:1.45}
+
 </style>
 </head>
 <body>
@@ -398,7 +411,9 @@ service cloud.firestore {
         <div class="fg"><label class="fl">📚 ความรู้รวม</label><input type="number" id="p-knowledge" placeholder="0"></div>
         <div class="fg"><label class="fl">💰 เหรียญทอง</label><input type="number" id="p-gold" placeholder="0" min="0"></div>
       </div>
-      <button class="save-btn" onclick="saveProfile()">💾 บันทึกโปรไฟล์</button>
+      <button class="save-btn" id="profile-save-btn" onclick="saveProfile()">💾 บันทึกโปรไฟล์</button>
+      <button class="btn btn-out btn-full" id="profile-admin-edit-btn" onclick="unlockProfileForAdmin()" style="display:none">🔓 แก้ไขโดยแอดมิน</button>
+      <div id="profile-lock-note" class="profile-lock-note" style="display:none">ข้อมูลตัวละครถูกล็อกแล้ว หากต้องแก้ไขให้แอดมินปลดล็อกและบันทึกใหม่</div>
       <div id="save-msg" style="text-align:center;font-size:0.75rem;color:var(--gr);min-height:18px;margin-top:5px"></div>
     </div>
     <div class="card" id="profile-preview" style="display:none">
@@ -438,6 +453,7 @@ service cloud.firestore {
       <button class="tab active" id="adm-tab-list" onclick="admTab('list')">รายการสัตว์ปิศาจ</button>
       <button class="tab" id="adm-tab-add" onclick="admTab('add')">เพิ่ม/แก้ไข</button>
       <button class="tab" id="adm-tab-items" onclick="admTab('items')">จัดการไอเทม</button>
+      <button class="tab" id="adm-tab-audit" onclick="admTab('audit')">ประวัติแอดมิน</button>
     </div>
     <!-- List -->
     <div id="adm-list-panel">
@@ -510,6 +526,12 @@ service cloud.firestore {
         <div class="fg"><label class="fl">จำนวน</label><input type="number" id="adm-item-qty" value="1" min="1"></div>
       </div>
       <button class="btn btn-gold btn-full" onclick="admAddItem()">➕ เพิ่มไอเทม</button>
+    </div>
+    <!-- Audit -->
+    <div id="adm-audit-panel" style="display:none">
+      <div class="card-title">ประวัติแอดมิน — ตรวจค่าสเตตัสตอนเริ่มสู้</div>
+      <div class="notice">หน้านี้แสดง snapshot ค่าที่ผู้เล่นใช้ในแต่ละรอบ เพื่อดูว่ามีใครกรอกค่าสูงผิดปกติหรือไม่</div>
+      <div id="adm-audit-list"></div>
     </div>
   </div>
 </div>
@@ -765,6 +787,8 @@ let monsters = JSON.parse(localStorage.getItem('lhumu_monsters')||JSON.stringify
 let inventory = JSON.parse(localStorage.getItem('lhumu_inv')||JSON.stringify(DEFAULT_ITEMS));
 let history = JSON.parse(localStorage.getItem('lhumu_history')||'[]');
 let selectedPath = savedProfile?.path||null;
+let isProfileAdminEdit=false;
+let adminAuditFilter='all';
 
 let B = {active:false,turn:0,playerHP:0,playerMaxHP:0,monHP:0,monMaxHP:0,
   defending:false,dodging:false,shielded:false,monDebuf:0,purifyTurns:0,purifyCD:0,healCD:0,arrayCD:0,arrayBlock:false,
@@ -1356,7 +1380,8 @@ async function endBattleResult(outcome){
     monster:curMon.name,rank:curMon.rank,diff:curMon.diff,
     outcome:titles[outcome],outKey:outcome,
     turns:B.turn,dmgGiven:B.dmgGiven,dmgTaken:B.dmgTaken,
-    exp,rewards
+    exp,rewards,
+    audit:profileSnapshotForAudit()
   };
   history.unshift(hItem);
   if(history.length>50) history=history.slice(0,50);
@@ -1378,6 +1403,78 @@ function endBattle(){
   refreshLobby();
 }
 
+
+function profileHasRealStats(p){
+  if(!p) return false;
+  return ['hp','earth','water','wind','fire','wood','metal','prana','dodge','knowledge','gold'].some(k=>Number(p[k]||0)>0) || !!p.path;
+}
+
+function isProfileLocked(){
+  if(!savedProfile) return false;
+  if(savedProfile.profileLocked === true) return true;
+  if(savedProfile.profileLocked === false) return false;
+  // โปรไฟล์เก่าที่เคยกรอกแล้ว แต่ยังไม่มี field profileLocked ให้ถือว่าล็อก
+  return profileHasRealStats(savedProfile);
+}
+
+function setProfileFormLocked(locked){
+  const ids=['p-name','p-hp','p-earth','p-water','p-wind','p-fire','p-wood','p-metal','p-prana','p-dodge','p-knowledge','p-gold'];
+  ids.forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.disabled=locked;
+  });
+  const saveBtn=document.getElementById('profile-save-btn');
+  const adminBtn=document.getElementById('profile-admin-edit-btn');
+  const note=document.getElementById('profile-lock-note');
+  const card=document.querySelector('#screen-profile .card');
+  if(card) card.classList.toggle('profile-locked',locked);
+  if(saveBtn) saveBtn.style.display=locked?'none':'block';
+  if(adminBtn) adminBtn.style.display=locked?'block':'none';
+  if(note) note.style.display=locked?'block':'none';
+}
+
+function applyProfileLockUI(){
+  setProfileFormLocked(isProfileLocked() && !isProfileAdminEdit);
+}
+
+function unlockProfileForAdmin(){
+  if(!requireAdmin()) return;
+  isProfileAdminEdit=true;
+  setProfileFormLocked(false);
+  const msg=document.getElementById('save-msg');
+  if(msg){msg.textContent='แอดมินปลดล็อกให้แก้ไขแล้ว';setTimeout(()=>msg.textContent='',2200);}
+  renderPathPicker();
+}
+
+function profileSnapshotForAudit(){
+  const p=savedProfile||{};
+  return {
+    hp:Number(p.hp||0),
+    earth:Number(p.earth||0),
+    water:Number(p.water||0),
+    wind:Number(p.wind||0),
+    fire:Number(p.fire||0),
+    wood:Number(p.wood||0),
+    metal:Number(p.metal||0),
+    prana:Number(p.prana||0),
+    dodge:Number(p.dodge||0),
+    knowledge:Number(p.knowledge||0),
+    gold:Number(p.gold||0),
+    path:p.path||'other'
+  };
+}
+
+function auditStatWarning(audit){
+  if(!audit) return '';
+  const values=[audit.hp,audit.earth,audit.water,audit.wind,audit.fire,audit.wood,audit.metal,audit.prana,audit.dodge,audit.knowledge].map(v=>Number(v||0));
+  const max=Math.max(...values);
+  if(max>=500) return '⚠️ สูงมาก';
+  if(max>=200) return '⚠️ สูงผิดปกติ';
+  if(max>=100) return 'ตรวจสอบ';
+  return '';
+}
+
+
 // ══════════════════════════════════════════════
 //  PROFILE
 // ══════════════════════════════════════════════
@@ -1390,7 +1487,7 @@ function renderPathPicker(){
       <div class="path-desc">${p.desc}</div>
     </div>`).join('');
 }
-function selectPath(id){selectedPath=id;renderPathPicker();}
+function selectPath(id){if(isProfileLocked()&&!isProfileAdminEdit){alert('ข้อมูลตัวละครถูกล็อกแล้ว ให้แอดมินเป็นคนแก้ไข');return;}selectedPath=id;renderPathPicker();}
 
 function loadProfileForm(){
   if(!savedProfile) return;
@@ -1410,6 +1507,7 @@ function loadProfileForm(){
   if(p.path) selectedPath=p.path;
   renderPathPicker();
   renderProfilePreview();
+  applyProfileLockUI();
 }
 
 function saveProfile(){
@@ -1428,8 +1526,11 @@ function saveProfile(){
     knowledge:parseInt(document.getElementById('p-knowledge').value)||0,
     gold:parseInt(document.getElementById('p-gold')?.value)||0,
     path,
+    profileLocked:true,
   };
+  isProfileAdminEdit=false;
   save();
+  applyProfileLockUI();
   const msg=document.getElementById('save-msg');
   msg.textContent='✓ บันทึกสำเร็จ!';setTimeout(()=>msg.textContent='',2000);
   renderProfilePreview();
@@ -1533,13 +1634,63 @@ function closeAdmin(){document.getElementById('admin-modal').classList.remove('s
 function admTab(tab){
   if((tab==='add'||tab==='items') && !requireAdmin()) return;
   admCurrentTab=tab;
-  ['list','add','items'].forEach(t=>{
+  ['list','add','items','audit'].forEach(t=>{
     document.getElementById('adm-tab-'+t).classList.toggle('active',t===tab);
     document.getElementById('adm-'+t+'-panel').style.display=t===tab?'block':'none';
   });
   if(tab==='list') renderAdmMonList();
   if(tab==='items') renderAdmItems();
+  if(tab==='audit') renderAdminAudit();
 }
+
+
+function setAdminAuditFilter(name){
+  adminAuditFilter=name;
+  renderAdminAudit();
+}
+
+function renderAdminAudit(){
+  const el=document.getElementById('adm-audit-list');
+  if(!el) return;
+  const src=(allHistory&&allHistory.length)?allHistory:history;
+  if(!src.length){el.innerHTML='<div class="notice">ยังไม่มีประวัติให้ตรวจ</div>';return;}
+  const players=[...new Set(src.map(h=>h.player||'ไม่ทราบชื่อตัวละคร'))];
+  const filtered=adminAuditFilter==='all'?src:src.filter(h=>(h.player||'ไม่ทราบชื่อตัวละคร')===adminAuditFilter);
+  const filters=`
+    <div class="audit-filter">
+      <button class="btn btn-sm ${adminAuditFilter==='all'?'btn-gold':'btn-out'}" onclick="setAdminAuditFilter('all')">ทั้งหมด</button>
+      ${players.map((p,idx)=>`<button class="btn btn-sm ${adminAuditFilter===p?'btn-gold':'btn-out'}" onclick="setAdminAuditFilter(${JSON.stringify(p)})">${escapeHtml(p)}</button>`).join('')}
+    </div>`;
+  const rows=filtered.map(h=>{
+    const a=h.audit||{};
+    const warn=auditStatWarning(a);
+    const rewards=(h.rewards||[]).map(r=>r.name||'').filter(Boolean).join(', ')||'ไม่มี';
+    return `<tr>
+      <td>${escapeHtml(h.date||'')}</td>
+      <td><b>${escapeHtml(h.player||'ไม่ทราบชื่อตัวละคร')}</b><div class="audit-small">${escapeHtml(h.outcome||'')} ${escapeHtml(h.monster||'')}</div></td>
+      <td>${Number(a.hp||0)}</td>
+      <td>ดิน ${Number(a.earth||0)}<br>น้ำ ${Number(a.water||0)}<br>ลม ${Number(a.wind||0)}<br>ไฟ ${Number(a.fire||0)}<br>ไม้ ${Number(a.wood||0)}<br>ทอง ${Number(a.metal||0)}</td>
+      <td>${Number(a.prana||0)}</td>
+      <td>${Number(a.dodge||0)}</td>
+      <td>${Number(a.knowledge||0)}</td>
+      <td>${Number(a.gold||0)}</td>
+      <td>${Number(h.turns||0)}</td>
+      <td>${Number(h.dmgGiven||0)} / ${Number(h.dmgTaken||0)}</td>
+      <td>${escapeHtml(rewards)}</td>
+      <td class="${warn?'audit-warn':''}">${warn||'—'}</td>
+    </tr>`;
+  }).join('');
+  el.innerHTML=filters+`
+    <div class="audit-table-wrap">
+      <table class="audit-table">
+        <thead><tr>
+          <th>เวลา</th><th>ตัวละคร / ผล</th><th>HP เริ่ม</th><th>ธาตุทั้ง 6</th><th>ปราณรวม</th><th>หลบหลีกรวม</th><th>ความรู้รวม</th><th>ทองก่อนรับรางวัล</th><th>เทิร์น</th><th>ดาเมจ ให้/รับ</th><th>รางวัล</th><th>สถานะ</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
 
 function renderAdmMonList(){
   const el=document.getElementById('adm-mon-list');
