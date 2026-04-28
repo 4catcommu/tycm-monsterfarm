@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title> TYCM ฟาร์มสัตว์ปิศาจ</title>
+<title>TYCM ฟาร์มสัตว์ปิศาจ</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -186,6 +186,15 @@ hr.dv{border:none;border-top:1px solid var(--brd);margin:0.6rem 0}
 .notice-ok{color:var(--gr)}
 .warn{color:#e67e22}
 
+/* DROP RATE ADMIN */
+.drop-rate-box{border:1px solid var(--brd);border-radius:10px;padding:10px;background:rgba(255,255,255,0.03);margin-top:6px}
+.drop-rate-head,.drop-rate-row{display:grid;grid-template-columns:1.5fr 0.7fr 0.7fr 0.9fr 1.2fr 36px;gap:6px;align-items:center}
+.drop-rate-head{font-size:0.72rem;color:var(--muted);margin-bottom:6px;font-weight:700}
+.drop-rate-row{margin-bottom:6px}
+.drop-rate-row input{font-size:0.78rem;padding:6px 7px}
+.drop-help{font-size:0.72rem;color:var(--muted);line-height:1.55;margin-top:6px}
+@media(max-width:720px){.drop-rate-head{display:none}.drop-rate-row{grid-template-columns:1fr 1fr}.drop-rate-row .drop-note{grid-column:1/-1}.drop-rate-row .drop-remove{grid-column:1/-1}}
+
 
 /* WHITE / BLACK CHINESE GAME UI OVERRIDE */
 :root{--gold:#111;--gold2:#000;--deep:#f6f1e7;--surf:#fffaf0;--card:#fff;--card2:#f1eadc;--acc:#8b0000;--gr:#1f7a3f;--bl:#1f4d75;--pur:#4a3b5f;--text:#111;--muted:#555;--brd:rgba(0,0,0,.28);--brd2:rgba(0,0,0,.55);--rad:12px}
@@ -365,7 +374,8 @@ input[type=text],input[type=number],select,textarea{font-size:1rem;background:#f
   <!-- ══════════ INVENTORY ══════════ -->
   <div id="screen-inventory" class="screen">
     <div class="card">
-      <div class="card-title">คลังไอเทม</div>
+      <div class="card-title">คลังไอเทม <span style="font-size:0.65rem;color:var(--muted)">เชื่อมกับ Inventory ลูกมู</span></div>
+      <button class="btn btn-out btn-sm" onclick="syncInventoryFromLhumu()" style="margin-bottom:8px">↻ ซิงก์คลังลูกมู</button>
       <div class="inv-grid" id="inv-grid"></div>
     </div>
     <div class="card">
@@ -390,7 +400,7 @@ input[type=text],input[type=number],select,textarea{font-size:1rem;background:#f
       <button class="modal-close" onclick="closeAdmin()">✕</button>
     </div>
     <div class="tabs" style="margin-bottom:0.75rem">
-      <button class="tab active" id="adm-tab-list" onclick="admTab('list')">รายการมอน</button>
+      <button class="tab active" id="adm-tab-list" onclick="admTab('list')">รายการสัตว์ปิศาจ</button>
       <button class="tab" id="adm-tab-add" onclick="admTab('add')">เพิ่ม/แก้ไข</button>
       <button class="tab" id="adm-tab-items" onclick="admTab('items')">จัดการไอเทม</button>
     </div>
@@ -433,10 +443,17 @@ input[type=text],input[type=number],select,textarea{font-size:1rem;background:#f
         <div class="fg"><label class="fl">EXP ที่ให้</label><input type="number" id="adm-m-exp" value="20"></div>
       </div>
       <div class="fg"><label class="fl">คำอธิบาย</label><textarea id="adm-m-desc" placeholder="สัตว์ปิศาจแห่งป่า..."></textarea></div>
-      <div class="fg"><label class="fl">ดรอปไอเทม (คั่นด้วยลูกน้ำ เช่น potion,bomb)</label>
-        <input type="text" id="adm-m-drops" placeholder="potion,bomb">
+      <div class="fg">
+        <label class="fl">ดรอปไอเทมแบบกำหนดอัตราแยกชนิด</label>
+        <div class="drop-rate-box">
+          <div class="drop-rate-head">
+            <div>ชื่อไอเทม</div><div>จำนวน</div><div>หน่วย</div><div>โอกาสดรอป %</div><div>โน้ต</div><div></div>
+          </div>
+          <div id="adm-drop-rows"></div>
+          <button type="button" class="btn btn-out btn-sm" onclick="admAddDropRow()">➕ เพิ่มรายการดรอป</button>
+          <div class="drop-help">ใส่โอกาสเป็น 0-100% แต่ละแถวจะสุ่มแยกกัน เช่น หิน 80%, เขี้ยว 35%, แกน 5% หมายถึงมีโอกาสได้หลายชิ้นในรอบเดียวได้ ถ้าผ่านหลายรายการ</div>
+        </div>
       </div>
-      <div class="fg"><label class="fl">อัตราดรอปหายาก (0-100%)</label><input type="number" id="adm-m-rare" value="20" min="0" max="100"></div>
       <div style="display:flex;gap:8px;margin-top:8px">
         <button class="btn btn-gold" style="flex:1" onclick="admSaveMon()">💾 บันทึก</button>
         <button class="btn btn-out" onclick="admTab('list')">ยกเลิก</button>
@@ -513,6 +530,76 @@ input[type=text],input[type=number],select,textarea{font-size:1rem;background:#f
 
   window.firebaseMonsterFarmReady = true;
   console.log("✅ Firebase Monster Farm connected");
+</script>
+
+<!-- Inventory Project Bridge: เชื่อมกับเว็บคลังผู้เล่นอีก Firebase Project -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+  import { getFirestore, doc, getDoc, collection, addDoc, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+  const inventoryFirebaseConfig = {
+    apiKey: "AIzaSyDaGO2hV8h-Ui70lV_UuBDbAxkbXpNdgAM",
+    authDomain: "tycm-inventory.firebaseapp.com",
+    projectId: "tycm-inventory",
+    storageBucket: "tycm-inventory.firebasestorage.app",
+    messagingSenderId: "212603900758",
+    appId: "1:212603900758:web:feda30470a3ab680047cf7"
+  };
+
+  const inventoryApp = initializeApp(inventoryFirebaseConfig, "inventoryProject");
+  const inventoryDb = getFirestore(inventoryApp);
+  const DEFAULT_SLOTS_FOR_BRIDGE = 5;
+
+  function normalizeName(name){return String(name||'').trim().replace(/\s+/g,' ');}
+  function playerDocIdFromName(name){return normalizeName(name).toLowerCase().replace(/[\/\\#?\[\].]/g,'-').replace(/\s+/g,'_').slice(0,80);}
+  function emptyBags(slotCount=DEFAULT_SLOTS_FOR_BRIDGE){const o={}; for(let i=0;i<slotCount;i++) o[String(i)]=null; return o;}
+  function getSlotCount(p){return Math.max(1,Number(p?.slotCount||p?.maxSlots||DEFAULT_SLOTS_FOR_BRIDGE));}
+  function cleanItem(item){ if(!item||typeof item!=='object') return null; return {name:String(item.name||''),qty:Number(item.qty||1),unit:String(item.unit||''),note:String(item.note||''),stone:String(item.stone||'')}; }
+  function normalizeBags(bags,slotCount=DEFAULT_SLOTS_FOR_BRIDGE){ const o=emptyBags(slotCount); if(!bags) return o; if(Array.isArray(bags)){ for(let i=0;i<slotCount;i++) o[String(i)]=Array.isArray(bags[i])?cleanItem(bags[i][0]):cleanItem(bags[i]); return o;} for(let i=0;i<slotCount;i++){const k=String(i); o[k]=Array.isArray(bags[k])?cleanItem(bags[k][0]):cleanItem(bags[k]);} return o; }
+  function timeStr(){return new Date().toLocaleString('th-TH',{hour12:false,day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});}
+
+  window.inventoryBridge = {
+    async loadByPlayerName(playerName){
+      const name = normalizeName(playerName); if(!name) return [];
+      const ref = doc(inventoryDb,'players',playerDocIdFromName(name));
+      const snap = await getDoc(ref); if(!snap.exists()) return [];
+      const p = snap.data(); const slotCount = getSlotCount(p); const bags = normalizeBags(p.bags, slotCount); const items = [];
+      for(let i=0;i<slotCount;i++){ const item = bags[String(i)]; if(item && item.name && Number(item.qty)>0) items.push({...item, bagIndex:i}); }
+      return items;
+    },
+    async withdrawItem(playerName, itemName, qty=1, note='ใช้ในสัตว์ปิศาจฟาร์ม'){
+      const name = normalizeName(playerName); const target = normalizeName(itemName); const amount = Math.max(1, Number(qty)||1);
+      if(!name) throw new Error('ยังไม่ได้ตั้งชื่อผู้เล่นให้ตรงกับคลังลูกมู'); if(!target) throw new Error('ไม่พบชื่อไอเทม');
+      const ref = doc(inventoryDb,'players',playerDocIdFromName(name)); let logData = null;
+      await runTransaction(inventoryDb, async(transaction)=>{
+        const snap = await transaction.get(ref); if(!snap.exists()) throw new Error(`ไม่พบผู้เล่น “${name}” ในคลังลูกมู`);
+        const old = snap.data(); const slotCount = getSlotCount(old); const bags = normalizeBags(old.bags, slotCount); let remain = amount;
+        for(let i=0;i<slotCount;i++){ const key=String(i); const item=bags[key]; if(!item) continue; if(normalizeName(item.name)!==target) continue; const take=Math.min(Number(item.qty||0),remain); const left=Number(item.qty||0)-take; bags[key]=left<=0?null:{...item,qty:left}; remain-=take; if(remain<=0) break; }
+        if(remain>0) throw new Error(`ไอเทม “${target}” ในคลังลูกมูไม่พอ`);
+        transaction.set(ref,{name:String(old.name||name),order:Number(old.order||Date.now()),slotCount:Number(slotCount),avatarUrl:String(old.avatarUrl||''),currency:Number(old.currency||0),bags});
+        logData={playerName:String(old.name||name),itemName:target,amount};
+      });
+      await addDoc(collection(inventoryDb,'logs'),{time:timeStr(),ts:Date.now(),playerName:logData.playerName,bagIdx:null,type:'withdraw',itemsText:String(`${logData.itemName}−${logData.amount} | ${note}`)});
+      return true;
+    },
+    async depositItem(playerName, itemName, qty=1, unit='', note='ได้รับจากสัตว์ปิศาจฟาร์ม'){
+      const name = normalizeName(playerName); const target = normalizeName(itemName); let amount = Math.max(1, Number(qty)||1);
+      if(!name) throw new Error('ยังไม่ได้ตั้งชื่อผู้เล่นให้ตรงกับคลังลูกมู'); if(!target) throw new Error('ไม่พบชื่อไอเทม');
+      const ref = doc(inventoryDb,'players',playerDocIdFromName(name)); let logData = null;
+      await runTransaction(inventoryDb, async(transaction)=>{
+        const snap = await transaction.get(ref); let old = {name, order:Date.now(), slotCount:DEFAULT_SLOTS_FOR_BRIDGE, avatarUrl:'', currency:0, bags:emptyBags(DEFAULT_SLOTS_FOR_BRIDGE)}; if(snap.exists()) old=snap.data();
+        const slotCount = getSlotCount(old); const bags = normalizeBags(old.bags, slotCount);
+        for(let i=0;i<slotCount && amount>0;i++){ const key=String(i); const item=bags[key]; if(item && normalizeName(item.name)===target && String(item.unit||'')===String(unit||'') && Number(item.qty||0)<10){ const add=Math.min(10-Number(item.qty||0), amount); bags[key]={...item,qty:Number(item.qty||0)+add,note:item.note||note}; amount-=add; } }
+        for(let i=0;i<slotCount && amount>0;i++){ const key=String(i); if(!bags[key]){ const add=Math.min(10,amount); bags[key]={name:target,qty:add,unit:String(unit||''),note:String(note||''),stone:''}; amount-=add; } }
+        if(amount>0) throw new Error(`กระเป๋าของ “${name}” เต็ม ไม่สามารถเพิ่ม “${target}” ได้ครบ`);
+        transaction.set(ref,{name:String(old.name||name),order:Number(old.order||Date.now()),slotCount:Number(slotCount),avatarUrl:String(old.avatarUrl||''),currency:Number(old.currency||0),bags});
+        logData={playerName:String(old.name||name),itemName:target,amount:Number(qty)||1};
+      });
+      await addDoc(collection(inventoryDb,'logs'),{time:timeStr(),ts:Date.now(),playerName:logData.playerName,bagIdx:null,type:'deposit',itemsText:String(`${logData.itemName}×${logData.amount}${unit||''} | ${note}`)});
+      return true;
+    }
+  };
+  console.log('✅ Inventory Project Bridge connected');
 </script>
 
 <script>
@@ -653,6 +740,23 @@ function dominantElements(profile){const keys=['earth','water','wind','fire','wo
 function hasItem(id){return inventory.some(i=>i.id===id && (i.count||0)>0);}
 function addItemCount(id, delta){let it=inventory.find(i=>i.id===id);if(!it){const base=[...DEFAULT_ITEMS,...RARE_ITEMS].find(x=>x.id===id)||{id,name:id,icon:'📦',desc:''};it={...base,count:0};inventory.push(it);}it.count=Math.max(0,(it.count||0)+delta);}
 
+function itemIdFromName(name){ const base=[...DEFAULT_ITEMS,...RARE_ITEMS].find(x=>x.name===name); if(base) return base.id; return 'ext_'+String(name||'item').trim().toLowerCase().replace(/[^a-z0-9ก-๙]+/gi,'_').slice(0,60); }
+function syncLocalInventoryFromExternalItems(externalItems){
+  if(!Array.isArray(externalItems)) return;
+  const known=[...DEFAULT_ITEMS,...RARE_ITEMS]; const counts={};
+  externalItems.forEach(it=>{ if(!it||!it.name) return; const id=itemIdFromName(it.name); if(!counts[id]) counts[id]={id,name:it.name,qty:0,unit:it.unit||''}; counts[id].qty += Number(it.qty||0); });
+  inventory = known.map(base=>({...base,count:Number(counts[base.id]?.qty||0)}));
+  Object.values(counts).forEach(x=>{ if(!known.some(k=>k.id===x.id)) inventory.push({id:x.id,name:x.name,icon:'📦',desc:'ไอเทมจากคลังลูกมู',count:x.qty,effect:'material'}); });
+  localStorage.setItem('lhumu_inv',JSON.stringify(inventory));
+}
+async function syncInventoryFromLhumu(){
+  if(!window.inventoryBridge || !savedProfile?.name) return false;
+  try{ const externalItems = await window.inventoryBridge.loadByPlayerName(savedProfile.name); syncLocalInventoryFromExternalItems(externalItems); renderInventory(); if(document.getElementById('adm-items-list')) renderAdmItems(); if(typeof updateTrapBtn==='function') updateTrapBtn(); console.log('🎒 ซิงก์ inventory จากคลังลูกมูสำเร็จ'); return true; }
+  catch(err){ console.warn('ซิงก์ inventory ลูกมูไม่สำเร็จ:', err); return false; }
+}
+async function withdrawExternalItemByName(itemName, qty=1, note='ใช้ในสัตว์ปิศาจฟาร์ม'){ if(!window.inventoryBridge || !savedProfile?.name) return false; await window.inventoryBridge.withdrawItem(savedProfile.name,itemName,qty,note); await syncInventoryFromLhumu(); return true; }
+async function depositExternalItemByName(itemName, qty=1, unit='', note='ได้รับจากสัตว์ปิศาจฟาร์ม'){ if(!window.inventoryBridge || !savedProfile?.name) return false; await window.inventoryBridge.depositItem(savedProfile.name,itemName,qty,unit,note); await syncInventoryFromLhumu(); return true; }
+
 // ══════════════════════════════════════════════
 //  LOBBY
 // ══════════════════════════════════════════════
@@ -725,7 +829,7 @@ function startBattle(){
   document.getElementById('battle-result').style.display='none';
 
   addLog(`⚔ เริ่มต่อสู้! ${curMon.name} [${curMon.rank}] ปรากฏตัว`,'le-info');
-  addLog(`❤ HP มอน: ${curMon.hp} | โจมตี: ${curMon.atk} | ป้องกัน: ${curMon.def} | หลบ: ${curMon.dodge}`,'le-sys');
+  addLog(`❤ HP สัตว์ปิศาจ: ${curMon.hp} | โจมตี: ${curMon.atk} | ป้องกัน: ${curMon.def} | หลบ: ${curMon.dodge}`,'le-sys');
   
   setSkills(true);
 }
@@ -754,7 +858,7 @@ function updateTrapBtn(){
   } else {
     btn.disabled=true;
     const pctLeft=Math.ceil(pct*100);
-    note.textContent=`🪤 จับได้เมื่อมอน HP เหลือ ≤10% (ตอนนี้ ${pctLeft}%)`;
+    note.textContent=`🪤 จับได้เมื่อสัตว์ปิศาจ HP เหลือ ≤10% (ตอนนี้ ${pctLeft}%)`;
     note.style.color='var(--muted)';
   }
 }
@@ -886,9 +990,9 @@ async function doAction(action,chosenEl){
     let monRoll=Math.max(0,d20(monDodge)-B.monDebuf);
     if(B.luckyTurn) playerRoll+=2;
     B.dodging = playerRoll>monRoll;
-    addLog(`💨 หลบหลีก! ผู้เล่น: 1d20+${dodgeStat}=${playerRoll} vs มอน: 1d20+${monDodge}=${monRoll} → ${B.dodging?'หลบสำเร็จ! ไม่รับดาเมจ':'หลบไม่สำเร็จ!'}`,B.dodging?'le-dodge':'le-mon');
+    addLog(`💨 หลบหลีก! ผู้เล่น: 1d20+${dodgeStat}=${playerRoll} vs สัตว์ปิศาจ: 1d20+${monDodge}=${monRoll} → ${B.dodging?'หลบสำเร็จ! ไม่รับดาเมจ':'หลบไม่สำเร็จ!'}`,B.dodging?'le-dodge':'le-mon');
     await animDice(playerRoll>20?20:playerRoll);
-    document.getElementById('dice-res').textContent=`หลบ: ${playerRoll} vs มอน: ${monRoll}`;
+    document.getElementById('dice-res').textContent=`หลบ: ${playerRoll} vs สัตว์ปิศาจ: ${monRoll}`;
   } else if(action==='heal'){
     if(path!=='raksa'){addLog('💖 เฉพาะสายรักษาเท่านั้นที่ใช้สกิลนี้ได้','le-sys');setSkills(true);return;}
     if(B.healCD>0){addLog(`💖 ฮีลยังติดคูลดาวน์อีก ${B.healCD} เทิร์น`,'le-sys');setSkills(true);return;}
@@ -925,12 +1029,16 @@ async function doAction(action,chosenEl){
     addLog(`🪤 จับกุมด้วยกรงสัตว์! 1d20+ความรู้รวม${knowledge}: ${trapRoll} (ต้องได้ ≥${threshold}) → ${success?'สำเร็จ!':'ล้มเหลว'}`,success?'le-cap':'le-sys');
     await animDice(Math.min(trapRoll,20));
     document.getElementById('dice-res').textContent=`จับกุม: ${trapRoll}`;
-    if(success){addItemCount('cage',-1);save();endBattleResult('capture');return;}
+    if(success){
+      try{await withdrawExternalItemByName('กรงสัตว์',1,`จับ ${curMon.name} ในสัตว์ปิศาจฟาร์ม`);}
+      catch(err){addLog('🪤 จับกุมไม่สำเร็จ: '+err.message,'le-sys');setSkills(true);return;}
+      addItemCount('cage',-1);save();await endBattleResult('capture');return;
+    }
   }
 
   updateHPBars();
   renderStatusTags();
-  if(B.monHP<=0){endBattleResult('win');return;}
+  if(B.monHP<=0){await endBattleResult('win');return;}
 
   // Monster turn
   await wait(500);
@@ -953,7 +1061,7 @@ async function doAction(action,chosenEl){
   tickCooldowns();
   updateHPBars();
   renderStatusTags();
-  if(B.playerHP<=0){endBattleResult('lose');return;}
+  if(B.playerHP<=0){await endBattleResult('lose');return;}
   setSkills(true);
 }
 
@@ -991,6 +1099,13 @@ async function useItem(itemId){
   closeItemModal();
   const inv=inventory.find(i=>i.id===itemId);
   if(!inv||inv.count<=0) return;
+  try{
+    await withdrawExternalItemByName(inv.name,1,`ใช้ ${inv.name} ในสัตว์ปิศาจฟาร์ม`);
+  }catch(err){
+    addLog('🎒 ใช้ไอเทมไม่สำเร็จ: '+err.message,'le-sys');
+    setSkills(true);
+    return;
+  }
   inv.count--;save();
   B.acts.item++;
 
@@ -1000,7 +1115,7 @@ async function useItem(itemId){
   else if(inv.effect==='shield50'){B.shielded=true;B.defending=true;addLog(`🔮 ใช้ ${inv.name}! โล่มนต์ -50% ดาเมจ`,'le-info');}
   else if(inv.effect==='elixir'){B.playerHP=Math.min(B.playerMaxHP,B.playerHP+15);addLog(`⚗️ ใช้ ${inv.name}! HP +15`,'le-heal');}
   updateHPBars();
-  if(B.monHP<=0){endBattleResult('win');return;}
+  if(B.monHP<=0){await endBattleResult('win');return;}
 
   // Monster still attacks
   await wait(400);
@@ -1014,14 +1129,14 @@ async function useItem(itemId){
   addLog(`👾 ${curMon.name} โจมตี!${B.monDebuf?' (ถูกปัดเป่า -2)':''} ดาเมจ ${mDmg}`,'le-mon');
   tickCooldowns();
   updateHPBars();
-  if(B.playerHP<=0){endBattleResult('lose');return;}
+  if(B.playerHP<=0){await endBattleResult('lose');return;}
   setSkills(true);
 }
 
 // ══════════════════════════════════════════════
 //  BATTLE END
 // ══════════════════════════════════════════════
-function generateRewards(outcome){
+async function generateRewards(outcome){
   const p=savedProfile;
   const path=p.path||'other';
   const mult=RANK_MULT[curMon.rank]||1;
@@ -1037,37 +1152,74 @@ function generateRewards(outcome){
 
     if(outcome==='capture') rewards.push({icon:'📦',name:`สัตว์ปิศาจ: ${curMon.name}`,rare:false});
 
-    // Normal drops
-    let drops=[...(curMon.drops||[])];
-    if(path==='lomsang'){drops=[...drops,...(curMon.drops||[]).slice(0,1)];} // extra item
+    const dropTable = getMonsterDropTable(curMon);
+    const rolledDrops = rollMonsterDrops(dropTable, { extraFirstDrop: path==='lomsang' });
 
-    drops.forEach(dropId=>{
-      const it=inventory.find(i=>i.id===dropId)||DEFAULT_ITEMS.find(i=>i.id===dropId);
-      if(it){
-        const inv=inventory.find(i=>i.id===dropId);
-        if(inv){inv.count++;} else {inventory.push({...it,count:1});}
-        rewards.push({icon:it.icon,name:it.name+' x1',rare:false});
-      }
-    });
+    for(const drop of rolledDrops){
+      const itemName = drop.name || drop.id || 'ไอเทมไม่ทราบชื่อ';
+      const qty = Math.max(1, Number(drop.qty||1));
+      const unit = drop.unit || '';
+      const note = drop.note || `ดรอปจาก ${curMon.name}`;
+      const icon = drop.icon || guessItemIcon(itemName);
+      rewards.push({icon, name:`${itemName} x${qty}${unit?` ${unit}`:''}`, rare:Number(drop.rate||0)<=10, notes:Number(drop.rate||0)<=10?'★ ดรอปยาก':''});
 
-    // Rare drop
-    const rareChance=(curMon.rareRate||10)*(outcome==='capture'?1.5:1);
-    if(Math.random()*100<rareChance){
-      const rareEl=RARE_ITEMS.find(r=>r.id==='crystal_'+curMon.element)||RARE_ITEMS[6];
-      rewards.push({icon:rareEl.icon,name:rareEl.name,rare:true,notes:'★ หายาก'});
-      const inv=inventory.find(i=>i.id===rareEl.id);
-      if(inv){inv.count++;} else {inventory.push({...rareEl,count:1,effect:'material',desc:rareEl.desc});}
-    }
-    // Extra rare for SS/S
-    if(mult>=4&&Math.random()<0.2){
-      rewards.push({icon:'💎',name:'หินวิญญาณ',rare:true,notes:'★★ หายากมาก'});
+      // เก็บสำรองใน inventory ภายในเกมด้วย เพื่อให้หน้าไอเทมเดิมยังแสดงผลได้
+      const invId = drop.id || itemName;
+      const inv=inventory.find(i=>i.id===invId || i.name===itemName);
+      if(inv){inv.count=(Number(inv.count)||0)+qty;}
+      else {inventory.push({id:invId,name:itemName,icon,desc:note,count:qty,effect:'material',unit});}
+
+      // ซิงก์เข้าคลังลูกมูอีกเว็บหนึ่ง
+      try{await depositExternalItemByName(itemName,qty,unit,note);}
+      catch(err){rewards.push({icon:'⚠️',name:`ซิงก์คลังลูกมูไม่สำเร็จ: ${err.message}`,rare:false});}
     }
   }
   save();
   return {rewards,exp};
 }
 
-function endBattleResult(outcome){
+function getMonsterDropTable(mon){
+  if(Array.isArray(mon.dropTable) && mon.dropTable.length){
+    return mon.dropTable.map(d=>({
+      name:String(d.name||d.id||'').trim(),
+      id:String(d.id||d.name||'').trim(),
+      qty:Math.max(1,Number(d.qty||1)),
+      unit:String(d.unit||''),
+      rate:Math.min(100,Math.max(0,Number(d.rate||0))),
+      note:String(d.note||''),
+      icon:d.icon||''
+    })).filter(d=>d.name && d.rate>0);
+  }
+  // รองรับข้อมูลเก่า drops:['potion','bomb'] ให้แปลงเป็น 100% ต่อแถว
+  return (mon.drops||[]).map(id=>{
+    const it=inventory.find(i=>i.id===id)||DEFAULT_ITEMS.find(i=>i.id===id)||{};
+    return {id, name:it.name||id, qty:1, unit:it.unit||'', rate:100, note:`ดรอปจาก ${mon.name}`, icon:it.icon||guessItemIcon(it.name||id)};
+  });
+}
+
+function rollMonsterDrops(dropTable,{extraFirstDrop=false}={}){
+  const results=[];
+  for(const drop of dropTable){
+    if(Math.random()*100 < Number(drop.rate||0)) results.push({...drop});
+  }
+  // สายหลอมสร้าง: ถ้ามีรายการดรอปอย่างน้อย 1 รายการ จะได้โบนัสรายการแรกอีก 1 ชิ้นแบบไม่สุ่ม
+  if(extraFirstDrop && dropTable.length){
+    results.push({...dropTable[0], note:(dropTable[0].note||'')+' | โบนัสสายหลอมสร้าง'});
+  }
+  return results;
+}
+
+function guessItemIcon(name){
+  const n=String(name||'');
+  if(n.includes('กรง')) return '🪤';
+  if(n.includes('ยา')||n.includes('โอสถ')) return '🧪';
+  if(n.includes('หิน')||n.includes('ผลึก')||n.includes('แกน')) return '💎';
+  if(n.includes('เขี้ยว')||n.includes('เล็บ')) return '🦷';
+  if(n.includes('ขน')) return '🪶';
+  return '🎁';
+}
+
+async function endBattleResult(outcome){
   B.active=false;setSkills(false);
   const icons={win:'🏆',lose:'💀',capture:'🎊'};
   const titles={win:'ชนะ!',lose:'แพ้...',capture:'จับสำเร็จ!'};
@@ -1080,7 +1232,7 @@ function endBattleResult(outcome){
   rt.textContent=titles[outcome];rt.className='res-title '+outClass[outcome];
   document.getElementById('res-desc').textContent=descs[outcome];
 
-  const {rewards,exp}=generateRewards(outcome);
+  const {rewards,exp}=await generateRewards(outcome);
   const rbox=document.getElementById('reward-box');
   if(!rewards.length){rbox.innerHTML='<div style="color:var(--muted)">ไม่ได้รับรางวัล</div>';}
   else{rbox.innerHTML=rewards.map(r=>`<div class="rw-item"><span class="rw-icon">${r.icon}</span><span>${r.name}${r.rare?`<span class="rw-rare">${r.notes}</span>`:''}</span></div>`).join('');}
@@ -1168,6 +1320,7 @@ function saveProfile(){
   msg.textContent='✓ บันทึกสำเร็จ!';setTimeout(()=>msg.textContent='',2000);
   renderProfilePreview();
   refreshLobby();
+  syncInventoryFromLhumu();
 }
 
 function renderProfilePreview(){
@@ -1250,29 +1403,70 @@ function admTab(tab){
 function renderAdmMonList(){
   const el=document.getElementById('adm-mon-list');
   if(!monsters.length){el.innerHTML='<div class="notice">ยังไม่มีสัตว์ปิศาจ</div>';return;}
-  el.innerHTML=monsters.map((m,i)=>`
+  el.innerHTML=monsters.map((m,i)=>{
+    const dropTable=getMonsterDropTable(m);
+    const dropText=dropTable.length?dropTable.map(d=>`${d.name} ${d.qty||1}${d.unit||''} (${d.rate}%)`).join(' · '):'ไม่มี';
+    return `
     <div class="mon-admin-card">
       <div class="mon-admin-name">${m.art} ${m.name} [${m.rank}] ยาก${m.diff}/10</div>
-      <div class="mon-admin-meta">HP:${m.hp} ATK:${m.atk} DEF:${m.def} | EXP:${m.exp} | ดรอป:${(m.drops||[]).join(',')||'ไม่มี'} | หายาก:${m.rareRate}%</div>
+      <div class="mon-admin-meta">HP:${m.hp} ATK:${m.atk} DEF:${m.def} | EXP:${m.exp}</div>
+      <div class="mon-admin-meta">ดรอป: ${dropText}</div>
       <div class="mon-admin-btns">
         <button class="btn btn-out btn-sm" onclick="admEditMon(${i})">✏️ แก้ไข</button>
         <button class="btn btn-red btn-sm" onclick="admDelMon(${i})">🗑 ลบ</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
+}
+
+
+function admAddDropRow(data={}){
+  const wrap=document.getElementById('adm-drop-rows');
+  if(!wrap) return;
+  const row=document.createElement('div');
+  row.className='drop-rate-row';
+  row.innerHTML=`
+    <input type="text" class="drop-name" placeholder="เช่น หินจิตวิญญาณ" value="${escapeAttr(data.name||'')}">
+    <input type="number" class="drop-qty" min="1" value="${Number(data.qty||1)}">
+    <input type="text" class="drop-unit" placeholder="ชิ้น" value="${escapeAttr(data.unit||'')}">
+    <input type="number" class="drop-rate" min="0" max="100" step="1" value="${Number(data.rate ?? 50)}">
+    <input type="text" class="drop-note" placeholder="โน้ตดรอป" value="${escapeAttr(data.note||'')}">
+    <button type="button" class="btn btn-red btn-sm drop-remove" onclick="this.closest('.drop-rate-row').remove()">×</button>`;
+  wrap.appendChild(row);
+}
+
+function admSetDropRows(dropTable=[]){
+  const wrap=document.getElementById('adm-drop-rows');
+  if(!wrap) return;
+  wrap.innerHTML='';
+  if(!dropTable.length){admAddDropRow({name:'หินจิตวิญญาณ',qty:1,unit:'ชิ้น',rate:60,note:''});return;}
+  dropTable.forEach(d=>admAddDropRow(d));
+}
+
+function admReadDropRows(){
+  const rows=[...document.querySelectorAll('#adm-drop-rows .drop-rate-row')];
+  return rows.map(row=>({
+    name:row.querySelector('.drop-name')?.value.trim()||'',
+    id:row.querySelector('.drop-name')?.value.trim()||'',
+    qty:Math.max(1,Number(row.querySelector('.drop-qty')?.value||1)),
+    unit:row.querySelector('.drop-unit')?.value.trim()||'',
+    rate:Math.min(100,Math.max(0,Number(row.querySelector('.drop-rate')?.value||0))),
+    note:row.querySelector('.drop-note')?.value.trim()||''
+  })).filter(d=>d.name && d.rate>0);
 }
 
 function admNewMon(){
   document.getElementById('adm-edit-idx').value=-1;
-  ['adm-m-name','adm-m-art','adm-m-drops','adm-m-desc'].forEach(id=>document.getElementById(id).value='');
+  ['adm-m-name','adm-m-art','adm-m-desc'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('adm-m-hp').value=50;
   document.getElementById('adm-m-atk').value=10;
   document.getElementById('adm-m-def').value=4;
   document.getElementById('adm-m-dodge').value=2;
   document.getElementById('adm-m-exp').value=20;
   document.getElementById('adm-m-diff').value=3;
-  document.getElementById('adm-m-rare').value=15;
   document.getElementById('adm-m-el').value='earth';
   document.getElementById('adm-m-rank').value='C';
+  admSetDropRows([]);
 }
 
 function admEditMon(idx){
@@ -1289,14 +1483,13 @@ function admEditMon(idx){
   document.getElementById('adm-m-dodge').value=m.dodge||2;
   document.getElementById('adm-m-exp').value=m.exp||20;
   document.getElementById('adm-m-desc').value=m.desc||'';
-  document.getElementById('adm-m-drops').value=(m.drops||[]).join(',');
-  document.getElementById('adm-m-rare').value=m.rareRate||15;
+  admSetDropRows(getMonsterDropTable(m));
   admTab('add');
 }
 
 function admSaveMon(){
   const idx=parseInt(document.getElementById('adm-edit-idx').value);
-  const drops=document.getElementById('adm-m-drops').value.split(',').map(s=>s.trim()).filter(Boolean);
+  const dropTable=admReadDropRows();
   const mon={
     name:document.getElementById('adm-m-name').value||'สัตว์ปิศาจใหม่',
     art:document.getElementById('adm-m-art').value||'👾',
@@ -1309,8 +1502,8 @@ function admSaveMon(){
     dodge:parseInt(document.getElementById('adm-m-dodge').value)||2,
     exp:parseInt(document.getElementById('adm-m-exp').value)||20,
     desc:document.getElementById('adm-m-desc').value,
-    drops,
-    rareRate:parseInt(document.getElementById('adm-m-rare').value)||15,
+    dropTable,
+    drops:dropTable.map(d=>d.name), // เก็บชื่อไว้เพื่อรองรับโค้ดเก่าบางจุด
   };
   if(idx<0) monsters.push(mon); else monsters[idx]=mon;
   save();renderMonsterSelect();admTab('list');
@@ -1386,6 +1579,7 @@ async function initApp(){
   document.getElementById('btn-purify').style.display='none';
   document.getElementById('btn-array').style.display='none';
   await loadFromFirebase();
+  await syncInventoryFromLhumu();
   renderPathPicker();
   if(savedProfile){loadProfileForm();refreshLobby();}
   renderMonsterSelect();
