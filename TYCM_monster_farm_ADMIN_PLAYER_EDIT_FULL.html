@@ -1,0 +1,2194 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TYCM ฟาร์มสัตว์ปิศาจ</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --gold:#c9a227;--gold2:#f0c94a;--deep:#0d0a1a;--surf:#13101f;
+  --card:#1a1530;--card2:#221d38;--acc:#e94560;--gr:#27ae60;--bl:#3498db;
+  --pur:#9b59b6;--text:#e8dcc8;--muted:#8a7a9a;--brd:rgba(201,162,39,0.25);
+  --brd2:rgba(201,162,39,0.5);--rad:10px;
+}
+html,body{min-height:100vh;background:var(--deep);color:var(--text);font-family:'Sarabun',sans-serif;font-size:14px}
+h1,h2,h3,.cinzel{font-family:'Cinzel',serif}
+a{color:var(--gold)}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:var(--surf)}
+::-webkit-scrollbar-thumb{background:var(--gold);border-radius:2px}
+
+/* LAYOUT */
+.app{max-width:720px;margin:0 auto;padding:0.75rem}
+
+/* HEADER */
+.header{text-align:center;padding:0.75rem 0 0.5rem;border-bottom:1px solid var(--brd);margin-bottom:0.75rem;position:relative}
+.header h1{font-size:1.5rem;color:var(--gold2);letter-spacing:3px;text-shadow:0 0 20px rgba(240,201,74,0.5)}
+.header p{font-size:0.65rem;color:var(--muted);letter-spacing:2px;margin-top:2px}
+.admin-btn{position:absolute;right:0;top:0.75rem;padding:4px 10px;background:transparent;border:1px solid var(--muted);color:var(--muted);border-radius:6px;cursor:pointer;font-size:0.7rem;font-family:'Sarabun',sans-serif}
+.admin-btn:hover{border-color:var(--gold);color:var(--gold)}
+
+/* TABS */
+.tabs{display:flex;gap:4px;margin-bottom:0.75rem;flex-wrap:wrap}
+.tab{flex:1;min-width:60px;padding:7px 4px;border:1px solid var(--brd);background:transparent;color:var(--muted);border-radius:6px;cursor:pointer;font-family:'Sarabun',sans-serif;font-size:0.75rem;transition:all 0.2s;white-space:nowrap}
+.tab.active{background:var(--gold);color:#0d0a1a;font-weight:700;border-color:var(--gold)}
+.tab:hover:not(.active){color:var(--gold);border-color:var(--brd2)}
+
+/* CARD */
+.card{background:var(--surf);border:1px solid var(--brd);border-radius:var(--rad);padding:0.9rem;margin-bottom:0.65rem}
+.card-title{font-size:0.65rem;color:var(--gold);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:0.65rem;font-family:'Cinzel',serif}
+
+/* SCREEN */
+.screen{display:none}.screen.active{display:block}
+
+/* HP BAR */
+.hp-row{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.hp-label{font-size:11px;color:var(--muted);min-width:70px}
+.hp-wrap{flex:1;height:12px;background:rgba(255,255,255,0.07);border-radius:6px;overflow:hidden;border:1px solid var(--brd)}
+.hp-bar{height:100%;border-radius:6px;transition:width 0.5s}
+.hp-p{background:linear-gradient(90deg,#1a8a40,#27ae60)}
+.hp-m{background:linear-gradient(90deg,#8b1a1a,#c0392b)}
+.hp-txt{font-size:11px;min-width:64px;text-align:right;font-weight:600;color:var(--text)}
+
+/* STAT GRID */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.stat-cell{background:var(--card);border-radius:6px;padding:5px;text-align:center}
+.stat-cell .icon{font-size:13px}
+.stat-cell .lbl{font-size:9px;color:var(--muted);margin:1px 0}
+.stat-cell .val{font-size:0.9rem;font-weight:700;color:var(--gold2)}
+
+/* MONSTER */
+.mon-display{text-align:center;padding:0.75rem 0.5rem}
+.mon-art{font-size:3.5rem;display:block;margin-bottom:6px;filter:drop-shadow(0 0 12px rgba(201,162,39,0.5));animation:float 3s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+.mon-name{font-family:'Cinzel',serif;font-size:1rem;color:var(--gold2);margin-bottom:2px}
+.mon-sub{font-size:0.7rem;color:var(--muted)}
+.el-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;border:1px solid;margin-top:4px}
+.rank-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;margin-left:4px;font-family:'Cinzel',serif}
+
+/* DICE */
+.dice-area{text-align:center;margin:0.4rem 0}
+.dice-face{font-size:2.8rem;display:inline-block;transition:transform 0.1s}
+.dice-face.spin{animation:dspin 0.5s ease-out}
+@keyframes dspin{0%{transform:rotate(0) scale(0.5)}60%{transform:rotate(270deg) scale(1.3)}100%{transform:rotate(360deg) scale(1)}}
+.dice-res{font-size:0.75rem;color:var(--muted);min-height:18px;margin-top:2px}
+.turn-badge{text-align:center;font-size:0.7rem;color:var(--muted);margin-bottom:4px}
+
+/* SKILL BTNS */
+.skill-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:6px}
+.sk{padding:7px 4px;border:1px solid var(--brd);background:var(--card);color:var(--text);border-radius:8px;cursor:pointer;font-family:'Sarabun',sans-serif;font-size:0.72rem;font-weight:500;text-align:center;transition:all 0.2s}
+.sk:disabled{opacity:0.3;cursor:not-allowed}
+.sk .si{font-size:1.1rem;display:block;margin-bottom:2px}
+.sk.atk{border-color:rgba(231,76,60,0.5)}.sk.atk:hover:not(:disabled){background:rgba(231,76,60,0.15);border-color:#e74c3c;color:#e74c3c}
+.sk.def{border-color:rgba(52,152,219,0.5)}.sk.def:hover:not(:disabled){background:rgba(52,152,219,0.15);border-color:#3498db;color:#3498db}
+.sk.dodge{border-color:rgba(150,200,100,0.5)}.sk.dodge:hover:not(:disabled){background:rgba(150,200,100,0.15);border-color:#7dbb50;color:#7dbb50}
+.sk.heal{border-color:rgba(39,174,96,0.5)}.sk.heal:hover:not(:disabled){background:rgba(39,174,96,0.15);border-color:#27ae60;color:#27ae60}
+.sk.trap{border-color:rgba(201,162,39,0.5)}.sk.trap:hover:not(:disabled){background:rgba(201,162,39,0.15);border-color:var(--gold);color:var(--gold)}
+.sk.item{border-color:rgba(155,89,182,0.5)}.sk.item:hover:not(:disabled){background:rgba(155,89,182,0.15);border-color:#9b59b6;color:#9b59b6}
+
+/* LOG */
+.log-box{background:rgba(0,0,0,0.35);border:1px solid var(--brd);border-radius:8px;padding:8px;height:150px;overflow-y:auto;font-size:0.72rem;line-height:1.7}
+.log-entry{padding:1px 0;border-bottom:1px solid rgba(255,255,255,0.03)}
+.le-dmg{color:#e74c3c}.le-heal{color:#27ae60}.le-info{color:var(--gold)}.le-sys{color:var(--muted)}.le-cap{color:#9b59b6;font-weight:700}.le-mon{color:#e67e22}.le-dodge{color:#7dbb50}.le-crit{color:#f39c12;font-weight:700}
+
+/* FORM */
+.fg{margin-bottom:0.6rem}
+.fl{font-size:10px;color:var(--gold);letter-spacing:0.5px;margin-bottom:3px;display:block}
+input[type=text],input[type=number],select,textarea{width:100%;padding:7px 9px;background:var(--card);border:1px solid var(--brd);border-radius:6px;color:var(--text);font-family:'Sarabun',sans-serif;font-size:0.82rem}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}
+select option{background:var(--card)}
+textarea{resize:vertical;min-height:60px}
+.fr2{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.fr3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.fr4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.save-btn{width:100%;padding:9px;background:var(--gold);color:#0d0a1a;border:none;border-radius:8px;font-family:'Cinzel',serif;font-size:0.85rem;font-weight:700;cursor:pointer;letter-spacing:1px;margin-top:6px}
+.save-btn:hover{background:var(--gold2)}
+
+/* BTN */
+.btn{padding:7px 14px;border-radius:8px;cursor:pointer;font-family:'Sarabun',sans-serif;font-size:0.82rem;font-weight:600;border:1px solid;transition:all 0.2s}
+.btn-gold{background:var(--gold);color:#0d0a1a;border-color:var(--gold)}.btn-gold:hover{background:var(--gold2)}
+.btn-out{background:transparent;color:var(--gold);border-color:var(--brd2)}.btn-out:hover{background:rgba(201,162,39,0.1)}
+.btn-red{background:var(--acc);color:#fff;border-color:var(--acc)}.btn-red:hover{background:#c0392b}
+.btn-full{width:100%;display:block;text-align:center;margin-top:6px}
+.btn-sm{padding:4px 10px;font-size:0.72rem}
+
+/* RESULT */
+.result-box{text-align:center;padding:1rem}
+.res-icon{font-size:3.5rem;margin-bottom:6px}
+.res-title{font-family:'Cinzel',serif;font-size:1.3rem;margin-bottom:4px}
+.res-win{color:var(--gold2)}.res-lose{color:#e74c3c}.res-cap{color:#9b59b6}.res-flee{color:var(--muted)}
+.reward-box{background:rgba(201,162,39,0.07);border:1px solid var(--brd);border-radius:8px;padding:0.75rem;margin:0.6rem 0;text-align:left}
+.rw-item{display:flex;align-items:center;gap:8px;padding:3px 0;font-size:0.8rem}
+.rw-icon{font-size:0.95rem;min-width:22px;text-align:center}
+.rw-rare{color:var(--gold2);font-size:0.65rem;margin-left:4px}
+
+/* PATH PICKER */
+.path-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:8px}
+.path-card{background:var(--card);border:1px solid var(--brd);border-radius:10px;padding:10px;cursor:pointer;transition:all 0.2s;text-align:center}
+.path-card:hover,.path-card.selected{border-color:var(--gold);background:var(--card2)}
+.path-card.selected{box-shadow:0 0 0 1px var(--gold)}
+.path-icon{font-size:1.8rem;margin-bottom:4px}
+.path-name{font-family:'Cinzel',serif;font-size:0.75rem;color:var(--gold2);margin-bottom:3px}
+.path-desc{font-size:0.65rem;color:var(--muted);line-height:1.4}
+
+/* INVENTORY */
+.inv-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.inv-slot{background:var(--card);border:1px solid var(--brd);border-radius:6px;padding:6px;text-align:center;cursor:pointer;transition:all 0.2s}
+.inv-slot:hover:not(.empty){border-color:var(--gold)}
+.inv-slot.empty{opacity:0.3;cursor:default}
+.inv-slot .ii{font-size:1.2rem;display:block;margin-bottom:2px}
+.inv-slot .in{font-size:0.65rem;line-height:1.2}
+.inv-slot .ic{font-size:0.7rem;font-weight:700;color:var(--gold2);margin-top:2px}
+
+/* MODAL */
+.modal-ov{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:200;align-items:center;justify-content:center}
+.modal-ov.show{display:flex}
+.modal-box{background:var(--surf);border:1px solid var(--gold);border-radius:12px;padding:1.1rem;max-width:380px;width:92%;max-height:85vh;overflow-y:auto}
+.modal-title{font-family:'Cinzel',serif;color:var(--gold);margin-bottom:0.75rem;font-size:0.9rem;display:flex;justify-content:space-between;align-items:center}
+.modal-close{background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:0}
+.modal-close:hover{color:var(--text)}
+
+/* MONSTER ADMIN */
+.mon-admin-card{background:var(--card);border:1px solid var(--brd);border-radius:8px;padding:10px;margin-bottom:6px}
+.mon-admin-card .mon-admin-name{font-weight:600;color:var(--gold2);font-size:0.85rem}
+.mon-admin-card .mon-admin-meta{font-size:0.7rem;color:var(--muted);margin-top:2px}
+.mon-admin-btns{display:flex;gap:5px;margin-top:6px}
+
+/* STATUS TAG */
+.status-row{display:flex;gap:5px;flex-wrap:wrap;margin-top:3px;min-height:18px}
+.stag{padding:1px 7px;border-radius:8px;font-size:9px;font-weight:600}
+.stag-def{background:rgba(52,152,219,0.2);color:#3498db;border:1px solid rgba(52,152,219,0.3)}
+.stag-dodge{background:rgba(125,187,80,0.2);color:#7dbb50;border:1px solid rgba(125,187,80,0.3)}
+.stag-debuf{background:rgba(155,89,182,0.2);color:#9b59b6;border:1px solid rgba(155,89,182,0.3)}
+
+/* HISTORY */
+.hist-item{border:1px solid var(--brd);border-radius:8px;padding:0.75rem;margin-bottom:6px;background:var(--surf)}
+.hist-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.hist-mon{font-weight:600;color:var(--gold2);font-size:0.82rem}
+.hist-out{font-size:0.75rem;font-weight:600}
+.hist-meta{font-size:0.7rem;color:var(--muted);line-height:1.6}
+.hist-rewards{font-size:0.7rem;color:var(--gold);margin-top:3px}
+
+/* DIVIDER */
+hr.dv{border:none;border-top:1px solid var(--brd);margin:0.6rem 0}
+.tc{text-align:center}
+.mt1{margin-top:0.5rem}
+.flex-r{display:flex;gap:8px;align-items:center}
+.tag{padding:2px 7px;border-radius:8px;font-size:10px;background:var(--card);border:1px solid var(--brd)}
+
+/* PROFILE PATH DISPLAY */
+.path-display{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;border:1px solid var(--gold);background:rgba(201,162,39,0.1);font-size:0.8rem;margin:4px 0}
+
+/* NOTICE */
+.notice{font-size:0.75rem;color:var(--muted);padding:0.75rem;text-align:center;background:rgba(0,0,0,0.2);border-radius:6px}
+.notice-ok{color:var(--gr)}
+.warn{color:#e67e22}
+
+/* DROP RATE ADMIN */
+.drop-rate-box{border:1px solid var(--brd);border-radius:10px;padding:10px;background:rgba(255,255,255,0.03);margin-top:6px}
+.drop-rate-head,.drop-rate-row{display:grid;grid-template-columns:1.5fr 0.7fr 0.7fr 0.9fr 1.2fr 36px;gap:6px;align-items:center}
+.drop-rate-head{font-size:0.72rem;color:var(--muted);margin-bottom:6px;font-weight:700}
+.drop-rate-row{margin-bottom:6px}
+.drop-rate-row input{font-size:0.78rem;padding:6px 7px}
+.drop-help{font-size:0.72rem;color:var(--muted);line-height:1.55;margin-top:6px}
+@media(max-width:720px){.drop-rate-head{display:none}.drop-rate-row{grid-template-columns:1fr 1fr}.drop-rate-row .drop-note{grid-column:1/-1}.drop-rate-row .drop-remove{grid-column:1/-1}}
+
+
+/* WHITE / BLACK CHINESE GAME UI OVERRIDE */
+:root{--gold:#111;--gold2:#000;--deep:#f6f1e7;--surf:#fffaf0;--card:#fff;--card2:#f1eadc;--acc:#8b0000;--gr:#1f7a3f;--bl:#1f4d75;--pur:#4a3b5f;--text:#111;--muted:#555;--brd:rgba(0,0,0,.28);--brd2:rgba(0,0,0,.55);--rad:12px}
+html,body{font-size:17px;background:radial-gradient(circle at 10% 0%,rgba(0,0,0,.06),transparent 26%),linear-gradient(135deg,#fbf6ea 0%,#eee5d5 45%,#faf7ef 100%);color:var(--text)}
+.app{max-width:820px;padding:1rem}.header{border:3px double #111;border-radius:18px;padding:1rem .8rem;background:linear-gradient(180deg,#fff,#f3eadb);box-shadow:0 10px 30px rgba(0,0,0,.12)}
+.header h1{font-size:2rem;color:#111;text-shadow:none;letter-spacing:5px}.header p{font-size:.8rem;color:#333}
+.admin-btn,.tab,.btn,.save-btn,.sk,input[type=text],input[type=number],select,textarea,.card,.modal-box,.inv-slot,.path-card,.mon-admin-card,.hist-item{border-color:#111!important}
+.card,.modal-box{background:linear-gradient(180deg,#fffdf7,#f4ecdd);border:2px solid #111;box-shadow:0 8px 22px rgba(0,0,0,.08),inset 0 0 0 1px rgba(255,255,255,.55)}
+.card-title,.modal-title,.path-name,.mon-name{color:#111;font-weight:900}.tab{font-size:.95rem;padding:10px 6px;background:#fffaf0;color:#111;border:2px solid #111}.tab.active,.save-btn,.btn-gold{background:#111;color:#fff;border-color:#111}.tab:hover:not(.active),.btn-out:hover{background:#eee5d5;color:#111}.btn-out{background:#fff;color:#111;border-color:#111}.btn-red{background:#111;color:#fff;border-color:#111}
+.sk{font-size:.92rem;padding:10px 6px;background:#fff;color:#111;border:2px solid #111}.sk:hover:not(:disabled){background:#111!important;color:#fff!important;border-color:#111!important}.sk:disabled{opacity:.35;background:#e8e0d2;color:#555}
+input[type=text],input[type=number],select,textarea{font-size:1rem;background:#fff;color:#111;border:2px solid #111}select option{background:#fff;color:#111}.notice{font-size:.9rem;background:#f2eadc;color:#333;border:1px dashed #111}.log-box{font-size:.88rem;background:#fff;border:2px solid #111;color:#111}
+.stat-cell,.inv-slot,.path-card,.mon-admin-card{background:#fff;border:2px solid #111;color:#111}.stat-cell .val{color:#111;font-size:1.1rem}.stat-cell .lbl{font-size:.75rem;color:#444}.hp-wrap{background:#e6ddcf;border:2px solid #111}.hp-p,.hp-m{background:#111}.hp-txt,.hp-label{font-size:.85rem;color:#111}.mon-art{filter:grayscale(1) drop-shadow(0 0 5px rgba(0,0,0,.25))}.el-badge,.rank-badge,.path-display,.stag{background:#fff!important;color:#111!important;border-color:#111!important}.reward-box{background:#fff;border:2px solid #111}.inv-grid{grid-template-columns:repeat(5,1fr)}.le-dmg,.le-heal,.le-info,.le-sys,.le-cap,.le-mon,.le-dodge,.le-crit{color:#111!important}.mon-select-card{border-style:double!important}
+
+
+/* FINAL MERGE FIXES */
+.drop-rate-row input.drop-rate{font-weight:900;text-align:center}
+.hist-filter{display:flex;gap:6px;flex-wrap:wrap}
+/* MULTIPLAYER LOGIN */
+.login-ov{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9999;display:flex;align-items:center;justify-content:center;padding:18px}
+.login-box{width:min(460px,94vw);background:linear-gradient(180deg,#fffdf7,#f4ecdd);border:3px double #111;border-radius:18px;padding:20px;box-shadow:0 18px 40px rgba(0,0,0,.28);color:#111}
+.login-box h2{font-size:1.35rem;margin-bottom:8px;color:#111;text-align:center}.login-box p{font-size:.92rem;color:#444;line-height:1.55;margin-bottom:12px;text-align:center}.login-box .fg{margin-bottom:10px}.login-actions{display:grid;grid-template-columns:1fr;gap:8px}.login-mini{font-size:.8rem;color:#555;line-height:1.5;margin-top:10px}.login-status{font-size:.82rem;color:#8b0000;min-height:20px;text-align:center;margin-top:8px}.player-pill{display:inline-flex;align-items:center;gap:6px;border:2px solid #111;background:#fff;padding:3px 8px;font-size:.78rem;font-weight:900;margin-top:6px}
+
+
+/* ADMIN AUDIT + PROFILE LOCK */
+.profile-lock-note{font-size:.82rem;color:#555;line-height:1.55;margin-top:8px;padding:8px;border:1px dashed #111;background:#fff}
+.profile-locked input,.profile-locked select,.profile-locked textarea{opacity:.72}
+.audit-table-wrap{overflow-x:auto;border:2px solid #111;background:#fff;margin-top:8px}
+.audit-table{width:100%;border-collapse:collapse;font-size:.78rem;min-width:980px}
+.audit-table th{background:#111;color:#fff;padding:7px 8px;text-align:left;white-space:nowrap}
+.audit-table td{border-bottom:1px solid rgba(0,0,0,.18);padding:7px 8px;vertical-align:top}
+.audit-table tr:hover td{background:#f2eadc}
+.audit-warn{font-weight:900;color:#8b0000}
+.audit-filter{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.audit-small{font-size:.72rem;color:#555;line-height:1.45}
+
+/* ADMIN PLAYER EDITOR */
+.admin-player-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+.admin-player-grid .fg{margin-bottom:0}
+.admin-player-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.admin-player-mini{font-size:.78rem;color:#555;line-height:1.55;margin-top:6px}
+@media(max-width:720px){.admin-player-grid{grid-template-columns:1fr 1fr}}
+
+</style>
+</head>
+<body>
+<!--
+FIRESTORE RULES FOR TESTING (Firebase Console > Firestore Database > Rules > Publish):
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
+-->
+
+<div class="login-ov" id="login-ov">
+  <div class="login-box">
+    <h2>☯ เข้าสู่ฟาร์มสัตว์ปิศาจ</h2>
+    <p>ให้ผู้เล่นสร้าง ID ตัวละครด้วย [ ชื่อตัวละคร ] สำหรับใช้แยกไอเทมที่ได้รับจากผู้เล่นคนอื่นๆ </p>
+    <div class="fg"><label class="fl">ชื่อตัวละคร</label><input type="text" id="login-name" placeholder="ใส่ชื่อให้ตรงกับตัวละคร"></div>
+    <div class="fg"><label class="fl">รหัสผู้เล่น</label><input type="password" id="login-pin" placeholder="ตั้งครั้งแรก / ใช้รหัสเดิมครั้งถัดไป"></div>
+    <div class="login-actions">
+      <button class="btn btn-gold btn-full" onclick="loginPlayer()">เข้าสู่เกม / สร้างผู้เล่น</button>
+    </div>
+    <div class="login-status" id="login-status"></div>
+    <div class="login-mini">หมายเหตุ: เวอร์ชั่นทดลอง หากผลลัพธ์ดี จะอัพเดตมอนสเตอร์ในนี้ และเพิ่มบอสบางชนิดเข้ามาเพื่อให้ผู้เล่นที่ไม่เข้าดิสคอร์ดสามารถทอยเต๋าได้ง่ายขึ้น </div>
+  </div>
+</div>
+
+<div class="app">
+  <!-- HEADER -->
+  <div class="header">
+    <h1>⚔ ฟาร์มสัตว์ปิศาจ</h1>
+    <p>MONSTER FARM — TYCM EDITION v2.0</p><div class="player-pill">MULTIPLAYER Ver.</div>
+    <button class="admin-btn" onclick="openAdmin()">🔧 สตาฟ</button>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="sw('battle')">⚔ ต่อสู้</button>
+    <button class="tab" onclick="sw('profile')">👤 ตัวละคร</button>
+    <button class="tab" onclick="sw('inventory')">🎒 ไอเทม</button>
+    <button class="tab" onclick="sw('history')">📜 ประวัติ</button>
+  </div>
+
+  <!-- ══════════ BATTLE ══════════ -->
+  <div id="screen-battle" class="screen active">
+
+    <!-- LOBBY -->
+    <div id="battle-lobby">
+      <div class="card">
+        <div class="card-title">สถานะผู้เล่น</div>
+        <div class="hp-row">
+          <span class="hp-label">💚 HP</span>
+          <div class="hp-wrap"><div class="hp-bar hp-p" id="lob-hp-bar" style="width:100%"></div></div>
+          <span class="hp-txt" id="lob-hp-txt">—</span>
+        </div>
+        <div id="lob-path-display"></div>
+        <div class="stat-grid mt1" id="lob-stats">
+          <div class="stat-cell"><span class="icon">🌍</span><div class="lbl">ดิน</div><div class="val" id="ls-earth">—</div></div>
+          <div class="stat-cell"><span class="icon">💧</span><div class="lbl">น้ำ</div><div class="val" id="ls-water">—</div></div>
+          <div class="stat-cell"><span class="icon">💨</span><div class="lbl">ลม</div><div class="val" id="ls-wind">—</div></div>
+          <div class="stat-cell"><span class="icon">🔥</span><div class="lbl">ไฟ</div><div class="val" id="ls-fire">—</div></div>
+          <div class="stat-cell"><span class="icon">🌿</span><div class="lbl">ไม้</div><div class="val" id="ls-wood">—</div></div>
+          <div class="stat-cell"><span class="icon">⚙️</span><div class="lbl">ทอง</div><div class="val" id="ls-metal">—</div></div>
+          <div class="stat-cell"><span class="icon">✨</span><div class="lbl">ปราณรวม</div><div class="val" id="ls-prana">—</div></div>
+          <div class="stat-cell"><span class="icon">🏃</span><div class="lbl">หลบหลีกรวม</div><div class="val" id="ls-dodge">—</div></div>
+        </div>
+      </div>
+      <div class="card mon-select-card">
+        <div class="card-title">เลือกสัตว์ปิศาจที่ต้องการสู้</div>
+        <div class="fg"><select id="monster-select"></select></div>
+        <div class="notice">ผู้เล่นสามารถเลือกสัตว์ปิศาจเองได้ หรือกดสุ่มสัตว์ปิศาจ</div>
+      </div>
+      <div class="tc" style="padding:0.5rem 0;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <button class="btn btn-out" onclick="randomMonsterPick()" id="random-btn" style="padding:12px 18px;font-size:1rem">🎲 สุ่มสัตว์ปิศาจ</button>
+        <button class="btn btn-gold" onclick="startBattle()" id="start-btn" style="padding:12px 18px;font-size:1rem">⚔ เริ่มต่อสู้</button>
+      </div>
+    </div>
+
+    <!-- ARENA -->
+    <div id="battle-arena" style="display:none">
+      <div class="card">
+        <div class="mon-display">
+          <span class="mon-art" id="m-art">👾</span>
+          <div class="mon-name" id="m-name">—</div>
+          <div class="mon-sub" id="m-sub">—</div>
+          <div>
+            <span class="el-badge" id="m-el-badge">—</span>
+            <span class="rank-badge" id="m-rank-badge">—</span>
+          </div>
+        </div>
+        <div class="hp-row">
+          <span class="hp-label">❤ สัตว์ปิศาจ</span>
+          <div class="hp-wrap"><div class="hp-bar hp-m" id="m-hp-bar" style="width:100%"></div></div>
+          <span class="hp-txt" id="m-hp-txt">—</span>
+        </div>
+        <div class="status-row" id="m-status"></div>
+      </div>
+
+      <div class="card">
+        <div class="hp-row">
+          <span class="hp-label">💚 ผู้เล่น</span>
+          <div class="hp-wrap"><div class="hp-bar hp-p" id="p-hp-bar" style="width:100%"></div></div>
+          <span class="hp-txt" id="p-hp-txt">—</span>
+        </div>
+        <div class="status-row" id="p-status"></div>
+      </div>
+
+      <div class="card">
+        <div class="turn-badge" id="turn-badge">เทิร์น 1</div>
+        <div class="dice-area">
+          <div class="dice-face" id="dice-face">🎲</div>
+          <div class="dice-res" id="dice-res"></div>
+        </div>
+        <hr class="dv">
+        <div class="card-title">— เลือกแอคชั่น —</div>
+        <div class="skill-grid" id="skill-grid">
+          <button class="sk atk" onclick="act('attack')" id="btn-atk"><span class="si">⚔️</span>โจมตี</button>
+          <button class="sk def" onclick="act('defend')" id="btn-def"><span class="si">🛡️</span>ป้องกัน</button>
+          <button class="sk dodge" onclick="act('dodge')" id="btn-dodge"><span class="si">💨</span>หลบหลีก</button>
+          <button class="sk heal" onclick="act('heal')" id="btn-heal" style="display:none"><span class="si">💊</span>รักษา</button>
+          <button class="sk trap" onclick="act('trap')" id="btn-trap"><span class="si">🪤</span>จับกุม</button>
+          <button class="sk def" onclick="act('purify')" id="btn-purify" style="display:none"><span class="si">🌀</span>ปัดเป่า</button>
+          <button class="sk def" onclick="act('array')" id="btn-array" style="display:none"><span class="si">☯</span>ค่ายกล</button>
+          <button class="sk item" onclick="openItemModal()" id="btn-item"><span class="si">🎒</span>ใช้ไอเทม</button>
+        </div>
+        <div id="trap-note" style="font-size:0.65rem;color:var(--muted);text-align:center;margin-bottom:5px"></div>
+        <div class="log-box" id="battle-log"></div>
+      </div>
+    </div>
+
+    <!-- RESULT -->
+    <div id="battle-result" style="display:none">
+      <div class="card">
+        <div class="result-box">
+          <div class="res-icon" id="res-icon">🏆</div>
+          <div class="res-title" id="res-title">ชนะ!</div>
+          <p id="res-desc" style="font-size:0.8rem;color:var(--muted);margin:4px 0"></p>
+          <hr class="dv">
+          <div style="text-align:left">
+            <div class="card-title">📦 รางวัลที่ได้รับ</div>
+            <div class="reward-box" id="reward-box"></div>
+            <div class="card-title" style="margin-top:0.75rem">📊 สรุปการต่อสู้</div>
+            <div id="battle-summary" style="font-size:0.78rem;color:var(--muted);line-height:1.9"></div>
+          </div>
+          <button class="btn btn-gold btn-full" onclick="endBattle()">🔄 ต่อสู้ใหม่</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ PROFILE ══════════ -->
+  <div id="screen-profile" class="screen">
+    <div class="card">
+      <div class="card-title">ข้อมูลพื้นฐาน</div>
+      <div class="fr2">
+        <div class="fg"><label class="fl">ชื่อผู้เล่น</label><input type="text" id="p-name" placeholder="ลูกมู"></div>
+        <div class="fg"><label class="fl">HP สูงสุด</label><input type="number" id="p-hp" placeholder="100"></div>
+      </div>
+      <hr class="dv">
+      <div class="card-title">สายตัวละคร</div>
+      <div class="path-grid" id="path-grid"></div>
+      <hr class="dv">
+      <div class="card-title">ค่าธาตุ</div>
+      <div class="fr3">
+        <div class="fg"><label class="fl">🌍 ดิน</label><input type="number" id="p-earth" placeholder="0"></div>
+        <div class="fg"><label class="fl">💧 น้ำ</label><input type="number" id="p-water" placeholder="0"></div>
+        <div class="fg"><label class="fl">💨 ลม</label><input type="number" id="p-wind" placeholder="0"></div>
+        <div class="fg"><label class="fl">🔥 ไฟ</label><input type="number" id="p-fire" placeholder="0"></div>
+        <div class="fg"><label class="fl">🌿 ไม้</label><input type="number" id="p-wood" placeholder="0"></div>
+        <div class="fg"><label class="fl">⚙️ ทอง</label><input type="number" id="p-metal" placeholder="0"></div>
+      </div>
+      <hr class="dv">
+      <div class="card-title">ค่าพิเศษ</div>
+      <div class="fr3">
+        <div class="fg"><label class="fl">✨ ปราณรวม</label><input type="number" id="p-prana" placeholder="0"></div>
+        <div class="fg"><label class="fl">🏃 หลบหลีกรวม</label><input type="number" id="p-dodge" placeholder="0"></div>
+        <div class="fg"><label class="fl">📚 ความรู้รวม</label><input type="number" id="p-knowledge" placeholder="0"></div>
+        <div class="fg"><label class="fl">💰 เหรียญทอง</label><input type="number" id="p-gold" placeholder="0" min="0"></div>
+      </div>
+      <button class="save-btn" id="profile-save-btn" onclick="saveProfile()">💾 บันทึกโปรไฟล์</button>
+      <button class="btn btn-out btn-full" id="profile-admin-edit-btn" onclick="unlockProfileForAdmin()" style="display:none">🔓 แก้ไขโดยแอดมิน</button>
+      <div id="profile-lock-note" class="profile-lock-note" style="display:none">ข้อมูลตัวละครถูกล็อกแล้ว หากต้องแก้ไขให้แอดมินปลดล็อกและบันทึกใหม่</div>
+      <div id="save-msg" style="text-align:center;font-size:0.75rem;color:var(--gr);min-height:18px;margin-top:5px"></div>
+    </div>
+    <div class="card" id="profile-preview" style="display:none">
+      <div class="card-title">โปรไฟล์ปัจจุบัน</div>
+      <div id="prof-preview-content"></div>
+    </div>
+  </div>
+
+  <!-- ══════════ INVENTORY ══════════ -->
+  <div id="screen-inventory" class="screen">
+    <div class="card">
+      <div class="card-title">คลังไอเทม <span style="font-size:0.65rem;color:var(--muted)">แยกตามผู้เล่น</span></div>
+      <div class="inv-grid" id="inv-grid"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">รายละเอียด</div>
+      <div id="inv-desc" class="notice">เลือกไอเทมเพื่อดูรายละเอียด</div>
+    </div>
+  </div>
+
+  <!-- ══════════ HISTORY ══════════ -->
+  <div id="screen-history" class="screen">
+    <div class="card">
+      <div class="card-title">ประวัติการต่อสู้ <span style="font-size:0.6rem;color:var(--muted)">(ไม่สามารถแก้ไขได้)</span></div>
+      <div id="hist-list"><div class="notice">ยังไม่มีประวัติ</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ ADMIN MODAL ══════════ -->
+<div class="modal-ov" id="admin-modal">
+  <div class="modal-box" style="max-width:500px">
+    <div class="modal-title">🔧 แอดมิน — จัดการสัตว์ปิศาจ
+      <button class="modal-close" onclick="closeAdmin()">✕</button>
+    </div>
+    <div class="tabs" style="margin-bottom:0.75rem">
+      <button class="tab active" id="adm-tab-list" onclick="admTab('list')">รายการสัตว์ปิศาจ</button>
+      <button class="tab" id="adm-tab-add" onclick="admTab('add')">เพิ่ม/แก้ไข</button>
+      <button class="tab" id="adm-tab-items" onclick="admTab('items')">จัดการไอเทม</button>
+      <button class="tab" id="adm-tab-audit" onclick="admTab('audit')">ประวัติแอดมิน</button>
+      <button class="tab" id="adm-tab-players" onclick="admTab('players')">จัดการผู้เล่น</button>
+    </div>
+    <!-- List -->
+    <div id="adm-list-panel">
+      <div id="adm-mon-list"></div>
+      <button class="btn btn-gold btn-full mt1" onclick="admTab('add');admNewMon()">➕ เพิ่มสัตว์ปิศาจใหม่</button>
+    </div>
+    <!-- Add/Edit -->
+    <div id="adm-add-panel" style="display:none">
+      <div class="card-title">หน้าเพิ่มสัตว์ปิศาจสำหรับแอดมิน</div>
+      <input type="hidden" id="adm-edit-idx" value="-1">
+      <div class="fr2">
+        <div class="fg"><label class="fl">ชื่อสัตว์ปิศาจ</label><input type="text" id="adm-m-name" placeholder="วูล์ฟจ้าวป่า"></div>
+        <div class="fg"><label class="fl">Art (Emoji)</label><input type="text" id="adm-m-art" placeholder="🐺"></div>
+      </div>
+      <div class="fr3">
+        <div class="fg"><label class="fl">ธาตุ</label>
+          <select id="adm-m-el">
+            <option value="earth">🌍 ดิน</option><option value="water">💧 น้ำ</option>
+            <option value="wind">💨 ลม</option><option value="fire">🔥 ไฟ</option>
+            <option value="wood">🌿 ไม้</option><option value="metal">⚙️ ทอง</option>
+          </select>
+        </div>
+        <div class="fg"><label class="fl">ระดับ (Rank)</label>
+          <select id="adm-m-rank">
+            <option value="D">D</option><option value="C">C</option><option value="B">B</option>
+            <option value="A">A</option><option value="S">S</option><option value="SS">SS</option>
+          </select>
+        </div>
+        <div class="fg"><label class="fl">ความยาก (1-10)</label><input type="number" id="adm-m-diff" min="1" max="10" value="3"></div>
+      </div>
+      <div class="fr3">
+        <div class="fg"><label class="fl">HP</label><input type="number" id="adm-m-hp" value="50"></div>
+        <div class="fg"><label class="fl">โจมตี</label><input type="number" id="adm-m-atk" value="10"></div>
+        <div class="fg"><label class="fl">ป้องกัน</label><input type="number" id="adm-m-def" value="4"></div>
+      </div>
+      <div class="fr2">
+        <div class="fg"><label class="fl">หลบหลีก</label><input type="number" id="adm-m-dodge" value="2"></div>
+        <div class="fg"><label class="fl">EXP ที่ให้</label><input type="number" id="adm-m-exp" value="20"></div>
+      </div>
+      <div class="fr2">
+        <div class="fg"><label class="fl">เหรียญทองขั้นต่ำ</label><input type="number" id="adm-m-gold-min" value="8" min="0"></div>
+        <div class="fg"><label class="fl">เหรียญทองสูงสุด</label><input type="number" id="adm-m-gold-max" value="23" min="0"></div>
+      </div>
+      <div class="fg"><label class="fl">คำอธิบาย</label><textarea id="adm-m-desc" placeholder="สัตว์ปิศาจแห่งป่า..."></textarea></div>
+      <div class="fg">
+        <label class="fl">ดรอปไอเทมแบบกำหนดอัตราแยกชนิด</label>
+        <div class="drop-rate-box">
+          <div class="drop-rate-head">
+            <div>ชื่อไอเทม</div><div>จำนวน</div><div>หน่วย</div><div>โอกาสดรอป %</div><div>โน้ต</div><div></div>
+          </div>
+          <div id="adm-drop-rows"></div>
+          <button type="button" class="btn btn-out btn-sm" onclick="admAddDropRow()">➕ เพิ่มรายการดรอป</button>
+          <div class="drop-help">ใส่โอกาสเป็น 0-100% แต่ละแถวจะสุ่มแยกกัน เช่น หิน 80%, เขี้ยว 35%, แกน 5% หมายถึงมีโอกาสได้หลายชิ้นในรอบเดียวได้ ถ้าผ่านหลายรายการ</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn btn-gold" style="flex:1" onclick="admSaveMon()">💾 บันทึก</button>
+        <button class="btn btn-out" onclick="admTab('list')">ยกเลิก</button>
+      </div>
+    </div>
+    <!-- Items -->
+    <div id="adm-items-panel" style="display:none">
+      <div id="adm-items-list"></div>
+      <hr class="dv">
+      <div class="card-title">เพิ่มสต็อกไอเทม</div>
+      <div class="fr2">
+        <div class="fg"><label class="fl">ไอเทม</label>
+          <select id="adm-item-sel" id="adm-item-sel"></select>
+        </div>
+        <div class="fg"><label class="fl">จำนวน</label><input type="number" id="adm-item-qty" value="1" min="1"></div>
+      </div>
+      <button class="btn btn-gold btn-full" onclick="admAddItem()">➕ เพิ่มไอเทม</button>
+    </div>
+    <!-- Audit -->
+    <div id="adm-audit-panel" style="display:none">
+      <div class="card-title">ประวัติแอดมิน — ตรวจค่าสเตตัสตอนเริ่มสู้</div>
+      <div class="notice">หน้านี้แสดง snapshot ค่าที่ผู้เล่นใช้ในแต่ละรอบ เพื่อดูว่ามีใครกรอกค่าสูงผิดปกติหรือไม่</div>
+      <div id="adm-audit-list"></div>
+    </div>
+    <!-- Players Admin -->
+    <div id="adm-players-panel" style="display:none">
+      <div class="card-title">จัดการผู้เล่น — แก้ค่าสเตตัสแทนผู้เล่น</div>
+      <div class="notice">ผู้เล่นแก้โปรไฟล์เองไม่ได้หลังบันทึกครั้งแรก หากกรอกผิด ให้สตาฟเลือกชื่อในหน้านี้แล้วแก้ให้โดยตรง</div>
+      <button class="btn btn-out btn-full" onclick="adminLoadPlayers()">🔄 โหลดรายชื่อผู้เล่น</button>
+      <div class="fg" style="margin-top:8px">
+        <label class="fl">เลือกตัวละคร</label>
+        <select id="admin-player-select" onchange="adminSelectPlayer(this.value)">
+          <option value="">— โหลดรายชื่อก่อน —</option>
+        </select>
+      </div>
+      <div id="admin-player-editor" class="notice">เลือกตัวละครเพื่อแก้ไข</div>
+    </div>
+  </div>
+</div>
+
+<!-- ITEM MODAL -->
+<div class="modal-ov" id="item-modal">
+  <div class="modal-box">
+    <div class="modal-title">🎒 เลือกไอเทม<button class="modal-close" onclick="closeItemModal()">✕</button></div>
+    <div id="item-modal-list"></div>
+  </div>
+</div>
+
+<!-- ELEMENT SELECT MODAL -->
+<div class="modal-ov" id="el-modal">
+  <div class="modal-box">
+    <div class="modal-title">⚔ เลือกธาตุที่ใช้โจมตี<button class="modal-close" onclick="document.getElementById('el-modal').classList.remove('show')">✕</button></div>
+    <div id="el-modal-btns" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px"></div>
+  </div>
+</div>
+
+
+<!-- Firebase / Firestore Connector: Multiplayer per-player data -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+  import {
+    getFirestore,
+    doc,
+    getDoc,
+    setDoc,
+    serverTimestamp,
+    collection,
+    addDoc,
+    getDocs,
+    query,
+    orderBy,
+    limit
+  } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCL5h2SJheZG9I4l3eNHG3dH0_CRaZBbvI",
+    authDomain: "tycm-monster-farm1.firebaseapp.com",
+    projectId: "tycm-monster-farm1",
+    storageBucket: "tycm-monster-farm1.firebasestorage.app",
+    messagingSenderId: "302251113897",
+    appId: "1:302251113897:web:a1b070534ba90dc3be58b8",
+    measurementId: "G-5NH9V0SB8N"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const globalRef = doc(db, "monsterFarm", "globalConfig");
+
+  function normalizeName(name){
+    return String(name || "").trim().replace(/\s+/g, " ");
+  }
+
+  function playerKeyFromName(name){
+    return normalizeName(name)
+      .toLowerCase()
+      .replace(/[\/\\#?\[\].]/g, "-")
+      .replace(/\s+/g, "_")
+      .slice(0, 80);
+  }
+
+  function simpleHash(str){
+    let h = 2166136261;
+    const s = String(str || "");
+    for(let i = 0; i < s.length; i++){
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return (h >>> 0).toString(16);
+  }
+
+  async function safeGetDoc(ref, label){
+    try{
+      return await getDoc(ref);
+    }catch(err){
+      console.error("Firestore getDoc failed:", label, err);
+      const code = err.code || err.message || err;
+      throw new Error("อ่าน Firebase ไม่ได้: " + code + " — เช็ก Firestore Rules, projectId และเปิดไฟล์ผ่าน http/Live Server");
+    }
+  }
+
+  async function safeSetDoc(ref, data, options, label){
+    try{
+      return await setDoc(ref, data, options);
+    }catch(err){
+      console.error("Firestore setDoc failed:", label, err);
+      const code = err.code || err.message || err;
+      throw new Error("บันทึก Firebase ไม่ได้: " + code + " — เช็ก Firestore Rules และ projectId");
+    }
+  }
+
+  window.firebaseMonsterFarm = {
+    currentPlayerKey: null,
+    currentPlayerName: null,
+
+    async loadGlobalState(){
+      const snap = await safeGetDoc(globalRef, "monsterFarm/globalConfig");
+      if(!snap.exists()) return null;
+      return snap.data();
+    },
+
+    async saveGlobalState(data){
+      await safeSetDoc(globalRef, {
+        ...data,
+        updatedAt: serverTimestamp()
+      }, { merge: true }, "monsterFarm/globalConfig");
+    },
+
+    async loginPlayer(playerName, pin, defaults){
+      const name = normalizeName(playerName);
+      const rawPin = String(pin || "");
+      if(!name) throw new Error("กรุณาใส่ชื่อตัวละคร");
+      if(rawPin.length < 3) throw new Error("รหัสผู้เล่นควรมีอย่างน้อย 3 ตัวอักษร");
+
+      const key = playerKeyFromName(name);
+      const ref = doc(db, "monsterFarmPlayers", key);
+      const pinHash = simpleHash(rawPin);
+      const snap = await safeGetDoc(ref, "monsterFarmPlayers/" + key);
+
+      this.currentPlayerKey = key;
+      this.currentPlayerName = name;
+
+      if(!snap.exists()){
+        const data = {
+          pinHash,
+          savedProfile: {
+            ...(defaults.savedProfile || {}),
+            name: name,
+            hp: Number(defaults.savedProfile?.hp || 100),
+            earth: Number(defaults.savedProfile?.earth || 0),
+            water: Number(defaults.savedProfile?.water || 0),
+            wind: Number(defaults.savedProfile?.wind || 0),
+            fire: Number(defaults.savedProfile?.fire || 0),
+            wood: Number(defaults.savedProfile?.wood || 0),
+            metal: Number(defaults.savedProfile?.metal || 0),
+            prana: Number(defaults.savedProfile?.prana || 0),
+            dodge: Number(defaults.savedProfile?.dodge || 0),
+            knowledge: Number(defaults.savedProfile?.knowledge || 0),
+            gold: Number(defaults.savedProfile?.gold || 0),
+            path: defaults.savedProfile?.path || "other",
+            profileLocked: defaults.savedProfile?.profileLocked === true ? true : false
+          },
+          inventory: Array.isArray(defaults.inventory) ? defaults.inventory : [],
+          history: [],
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        };
+        await safeSetDoc(ref, data, { merge: true }, "create monsterFarmPlayers/" + key);
+        return data;
+      }
+
+      const data = snap.data();
+      if(data.pinHash !== pinHash){
+        throw new Error("รหัสผู้เล่นไม่ถูกต้อง หรือชื่อนี้ถูกใช้ไปแล้ว");
+      }
+      return data;
+    },
+
+    async savePlayerState(data){
+      if(!this.currentPlayerKey){
+        console.warn("savePlayerState skipped: no currentPlayerKey");
+        return;
+      }
+      const ref = doc(db, "monsterFarmPlayers", this.currentPlayerKey);
+      await safeSetDoc(ref, {
+        ...data,
+        updatedAt: serverTimestamp()
+      }, { merge: true }, "save monsterFarmPlayers/" + this.currentPlayerKey);
+    },
+
+    async addBattleHistory(item){
+      const payload = { ...item, ts: Date.now(), createdAt: serverTimestamp() };
+      try{
+        await addDoc(collection(db, "monsterFarmBattleHistory"), payload);
+      }catch(err){
+        console.error("addBattleHistory failed:", err);
+      }
+    },
+
+    async loadBattleHistory(){
+      try{
+        const q = query(collection(db, "monsterFarmBattleHistory"), orderBy("ts", "desc"), limit(300));
+        const snap = await getDocs(q);
+        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      }catch(err){
+        console.error("loadBattleHistory failed:", err);
+        return [];
+      }
+    },
+
+    async listPlayers(){
+      try{
+        const snap = await getDocs(collection(db, "monsterFarmPlayers"));
+        return snap.docs.map(d => ({ key: d.id, ...d.data() }))
+          .sort((a,b)=>String(a.savedProfile?.name||'').localeCompare(String(b.savedProfile?.name||''),'th'));
+      }catch(err){
+        console.error("listPlayers failed:", err);
+        throw new Error("โหลดรายชื่อผู้เล่นไม่ได้: " + (err.code || err.message || err));
+      }
+    },
+
+    async adminSavePlayer(playerKey, payload){
+      if(!playerKey) throw new Error("ไม่พบ playerKey");
+      const ref = doc(db, "monsterFarmPlayers", playerKey);
+      await safeSetDoc(ref, {
+        ...payload,
+        updatedAt: serverTimestamp(),
+        adminEditedAt: serverTimestamp()
+      }, { merge: true }, "admin update monsterFarmPlayers/" + playerKey);
+    }
+  };
+
+  window.firebaseMonsterFarmReady = true;
+  console.log("✅ Firebase Monster Farm multiplayer connected: tycm-monster-farm1");
+</script>
+
+
+<script>
+// ══════════════════════════════════════════════
+//  DATA
+// ══════════════════════════════════════════════
+const EL = {earth:'🌍',water:'💧',wind:'💨',fire:'🔥',wood:'🌿',metal:'⚙️'};
+const ELN = {earth:'ดิน',water:'น้ำ',wind:'ลม',fire:'ไฟ',wood:'ไม้',metal:'ทอง'};
+const ELC = {earth:'#c9a227',water:'#3498db',wind:'#95a5a6',fire:'#e74c3c',wood:'#27ae60',metal:'#bdc3c7'};
+const EL_CHAIN = {fire:'wind',wind:'earth',earth:'water',water:'fire',wood:'metal',metal:'wood'};
+const RANK_COLOR = {D:'#888',C:'#3498db',B:'#27ae60',A:'#e67e22',S:'#e74c3c',SS:'#9b59b6'};
+const RANK_MULT = {D:0.6,C:1,B:1.5,A:2.5,S:4,SS:6};
+
+const PATHS = [
+  {id:'ruaisian',name:'รั่วเซียน',icon:'⚡',desc:'โบนัส +5 ธาตุที่ถนัด',bonus:'top_element+5'},
+  {id:'patpao',name:'ปัดเป่า',icon:'🌀',desc:'ปลดล็อกแอคชั่นปัดเป่า ลดเต๋าสัตว์ปิศาจ -2 เป็นเวลา 2 เทิร์น',bonus:'purify_action'},
+  {id:'raksa',name:'รักษา',icon:'💖',desc:'ปลดล็อกแอคชั่นฮีลตัวเอง 1d20+(ปราณรวม x2)',bonus:'heal_action'},
+  {id:'lomsang',name:'หลอมสร้าง',icon:'🔨',desc:'ไอเทมดรอปเพิ่ม 1 ชิ้น',bonus:'item+1'},
+  {id:'kayokl',name:'ค่ายกล',icon:'☯',desc:'ปลดล็อกแอคชั่นกางค่ายกล ทำให้สัตว์ปิศาจไม่โจมตี 1 เทิร์น',bonus:'array_action'},
+  {id:'other',name:'อื่นๆ',icon:'✨',desc:'สายอิสระ — ไม่มีโบนัสพิเศษ',bonus:'none'},
+];
+
+const DEFAULT_MONSTERS = [
+  {name:'วูล์ฟจ้าวป่า',art:'🐺',element:'wind',hp:50,atk:12,def:4,dodge:3,exp:18,rank:'C',diff:2,desc:'หมาป่าพิทักษ์ป่า',drops:['potion'],rareRate:15},
+  {name:'เฟลมดรากอน',art:'🐉',element:'fire',hp:80,atk:18,def:6,dodge:4,exp:40,rank:'B',diff:5,desc:'มังกรไฟแห่งภูเขาไฟ',drops:['bomb','potion'],rareRate:25},
+  {name:'ไทดัลสปิริต',art:'🌊',element:'water',hp:60,atk:10,def:8,dodge:5,exp:25,rank:'C',diff:3,desc:'วิญญาณแห่งคลื่น',drops:['potion'],rareRate:10},
+  {name:'โกเล็มดิน',art:'🪨',element:'earth',hp:100,atk:8,def:15,dodge:1,exp:45,rank:'B',diff:5,desc:'หุ่นดินยักษ์แห่งดินแดนลึก',drops:['shield'],rareRate:20},
+  {name:'ธันเดอร์เบิร์ด',art:'⚡',element:'wind',hp:45,atk:20,def:3,dodge:7,exp:55,rank:'A',diff:7,desc:'นกสายฟ้า',drops:['bomb'],rareRate:35},
+  {name:'เวนอมสเนค',art:'🐍',element:'wood',hp:55,atk:14,def:5,dodge:4,exp:22,rank:'C',diff:3,desc:'งูพิษแห่งป่าลึก',drops:['potion'],rareRate:12},
+  {name:'ไอซ์วิทช์',art:'🧊',element:'water',hp:40,atk:22,def:2,dodge:6,exp:60,rank:'A',diff:7,desc:'แม่มดน้ำแข็ง',drops:['elixir'],rareRate:40},
+  {name:'เมทัลโกเล็ม',art:'🤖',element:'metal',hp:90,atk:16,def:20,dodge:0,exp:90,rank:'S',diff:9,desc:'หุ่นเหล็กโบราณ',drops:['shield','bomb'],rareRate:50},
+  {name:'ฟอเรสทรอล',art:'🌲',element:'wood',hp:70,atk:11,def:9,dodge:2,exp:30,rank:'B',diff:4,desc:'ทรอลล์พิทักษ์ป่า',drops:['potion'],rareRate:15},
+  {name:'ฟีนิกซ์',art:'🦅',element:'fire',hp:85,atk:25,def:8,dodge:8,exp:120,rank:'SS',diff:10,desc:'นกไฟอมตะ',drops:['elixir','bomb'],rareRate:60},
+  {name:'มัดสไลม์',art:'🟢',element:'earth',hp:35,atk:6,def:2,dodge:1,exp:8,rank:'D',diff:1,desc:'สไลม์โคลน',drops:['potion'],rareRate:5},
+  {name:'กัสต์ฟาเอรี่',art:'🧚',element:'wind',hp:30,atk:9,def:1,dodge:8,exp:10,rank:'D',diff:1,desc:'นางฟ้าลม',drops:[],rareRate:8},
+];
+
+const DEFAULT_ITEMS = [
+  {id:'cage',name:'กรงสัตว์',icon:'🧺',desc:'จำเป็นสำหรับแอคชั่นจับกุม หากไม่มีจะจับสัตว์ปิศาจไม่สำเร็จ',count:3,effect:'capture_required'},
+];
+
+const RARE_ITEMS = [
+  {id:'crystal_fire',name:'ผลึกไฟ',icon:'🔴',desc:'วัตถุดิบหายาก ธาตุไฟ'},
+  {id:'crystal_water',name:'ผลึกน้ำ',icon:'🔵',desc:'วัตถุดิบหายาก ธาตุน้ำ'},
+  {id:'crystal_wind',name:'ผลึกลม',icon:'⬜',desc:'วัตถุดิบหายาก ธาตุลม'},
+  {id:'crystal_earth',name:'ผลึกดิน',icon:'🟤',desc:'วัตถุดิบหายาก ธาตุดิน'},
+  {id:'crystal_wood',name:'ผลึกไม้',icon:'🟢',desc:'วัตถุดิบหายาก ธาตุไม้'},
+  {id:'crystal_metal',name:'ผลึกทอง',icon:'⚪',desc:'วัตถุดิบหายาก ธาตุทอง'},
+  {id:'spirit_stone',name:'หินวิญญาณ',icon:'💎',desc:'วัตถุหายากมาก'},
+];
+
+// ══════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════
+let savedProfile = JSON.parse(localStorage.getItem('lhumu_profile')||'null');
+let monsters = JSON.parse(localStorage.getItem('lhumu_monsters')||JSON.stringify(DEFAULT_MONSTERS));
+let inventory = JSON.parse(localStorage.getItem('lhumu_inv')||JSON.stringify(DEFAULT_ITEMS));
+let history = JSON.parse(localStorage.getItem('lhumu_history')||'[]');
+let selectedPath = savedProfile?.path||null;
+let isProfileAdminEdit=false;
+let adminAuditFilter='all';
+
+let B = {active:false,turn:0,playerHP:0,playerMaxHP:0,monHP:0,monMaxHP:0,
+  defending:false,dodging:false,shielded:false,monDebuf:0,purifyTurns:0,purifyCD:0,healCD:0,arrayCD:0,arrayBlock:false,
+  log:[],dmgGiven:0,dmgTaken:0,acts:{atk:0,def:0,dodge:0,heal:0,trap:0,item:0,purify:0,array:0},
+  trapBonus:0,luckyTurn:false};
+let curMon = null;
+let pendingAction = null;
+let playerSession = JSON.parse(localStorage.getItem('tycm_current_player')||'null');
+let allHistory = [];
+
+function save(){
+  const localPrefix = playerSession?.key ? `tycm_${playerSession.key}_` : 'lhumu_';
+  localStorage.setItem(localPrefix+'profile',JSON.stringify(savedProfile));
+  localStorage.setItem(localPrefix+'inv',JSON.stringify(inventory));
+  localStorage.setItem(localPrefix+'history',JSON.stringify(history));
+  localStorage.setItem('lhumu_monsters',JSON.stringify(monsters));
+
+  if(window.firebaseMonsterFarm){
+    if(window.firebaseMonsterFarm.currentPlayerKey){
+      window.firebaseMonsterFarm.savePlayerState({
+        savedProfile,
+        inventory,
+        history
+      }).catch(err=>{
+        console.error('บันทึกผู้เล่นขึ้น Firebase ไม่สำเร็จ:', err);
+        alert('บันทึกในเครื่องสำเร็จ แต่ซิงก์ข้อมูลผู้เล่นไม่สำเร็จ: '+err.message);
+      });
+    }
+  }
+}
+
+// ══════════════════════════════════════════════
+//  TAB
+// ══════════════════════════════════════════════
+function sw(tab){
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    t.classList.toggle('active',['battle','profile','inventory','history'][i]===tab);
+  });
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+tab).classList.add('active');
+  if(tab==='profile'){renderPathPicker();loadProfileForm();}
+  if(tab==='inventory') renderInventory();
+  if(tab==='history') renderHistory();
+  if(tab==='battle') refreshLobby();
+}
+
+// ══════════════════════════════════════════════
+//  DICE
+// ══════════════════════════════════════════════
+function d20(bonus=0){return Math.floor(Math.random()*20)+1+bonus;}
+function dN(n){return Math.floor(Math.random()*n)+1;}
+const D20_FACE=['⚀','⚁','⚂','⚃','⚄','⚅','🎲','🎲','🎲','🎲','🎲','🎲','🎲','🎲','🎲','🎲','🎲','🎲','🎲','🎲'];
+
+async function animDice(roll){
+  const el = document.getElementById('dice-face');
+  el.classList.add('spin');
+  for(let i=0;i<10;i++){el.textContent=D20_FACE[Math.floor(Math.random()*20)];await wait(40);}
+  el.textContent = roll<=6 ? D20_FACE[roll-1] : (roll<=10?'🎲':'🔟')[0];
+  el.textContent = roll < 10 ? D20_FACE[roll-1] : (roll===20?'💥':'🎲');
+  el.textContent = '🎲';
+  if(roll===20) el.textContent='💥';
+  else if(roll<=6) el.textContent=D20_FACE[roll-1];
+  el.classList.remove('spin');
+}
+function wait(ms){return new Promise(r=>setTimeout(r,ms));}
+
+
+function renderMonsterSelect(){
+  const sel=document.getElementById('monster-select');
+  if(!sel) return;
+  if(!monsters.length){sel.innerHTML='<option value="">ยังไม่มีสัตว์ปิศาจ</option>';return;}
+  sel.innerHTML=monsters.map((m,i)=>`<option value="${i}">${m.art} ${m.name} [${m.rank}] — HP ${m.hp} / ยาก ${m.diff}/10</option>`).join('');
+}
+function randomMonsterPick(){const sel=document.getElementById('monster-select');if(!sel||!monsters.length)return;sel.value=Math.floor(Math.random()*monsters.length);}
+function dominantElements(profile){const keys=['earth','water','wind','fire','wood','metal'];const max=Math.max(...keys.map(k=>profile[k]||0));return keys.filter(k=>(profile[k]||0)===max);}
+function hasItem(id){return inventory.some(i=>i.id===id && (i.count||0)>0);}
+function addItemCount(id, delta){let it=inventory.find(i=>i.id===id);if(!it){const base=[...DEFAULT_ITEMS,...RARE_ITEMS].find(x=>x.id===id)||{id,name:id,icon:'📦',desc:''};it={...base,count:0};inventory.push(it);}it.count=Math.max(0,(it.count||0)+delta);}
+
+function itemIdFromName(name){ const base=[...DEFAULT_ITEMS,...RARE_ITEMS].find(x=>x.name===name); if(base) return base.id; return 'drop_'+String(name||'item').trim().toLowerCase().replace(/[^a-z0-9ก-๙]+/gi,'_').slice(0,60); }
+async function syncInventoryFromLhumu(){
+  // ปิดการซิงก์กับเว็บ Inventory ลูกมู: inventory ในเกมนี้แยกตามผู้เล่น
+  renderInventory();
+  if(document.getElementById('adm-items-list')) renderAdmItems();
+  if(typeof updateTrapBtn==='function') updateTrapBtn();
+  return true;
+}
+async function withdrawExternalItemByName(itemName, qty=1, note='ใช้ในสัตว์ปิศาจฟาร์ม'){
+  // ไม่ซิงก์เว็บอื่น ใช้ inventory ภายในเกมแทน
+  return true;
+}
+async function depositExternalItemByName(itemName, qty=1, unit='', note='ได้รับจากสัตว์ปิศาจฟาร์ม'){
+  // ไม่ซิงก์เว็บอื่น รางวัลจะถูกเพิ่มใน inventory ภายในเกมโดย generateRewards อยู่แล้ว
+  return true;
+}
+
+// ══════════════════════════════════════════════
+//  LOBBY
+// ══════════════════════════════════════════════
+function refreshLobby(){
+  renderMonsterSelect();
+  if(!savedProfile) return;
+  const p=savedProfile;
+  document.getElementById('lob-hp-bar').style.width='100%';
+  document.getElementById('lob-hp-txt').textContent=p.hp+'/'+p.hp;
+  document.getElementById('ls-earth').textContent=p.earth||0;
+  document.getElementById('ls-water').textContent=p.water||0;
+  document.getElementById('ls-wind').textContent=p.wind||0;
+  document.getElementById('ls-fire').textContent=p.fire||0;
+  document.getElementById('ls-wood').textContent=p.wood||0;
+  document.getElementById('ls-metal').textContent=p.metal||0;
+  document.getElementById('ls-prana').textContent=p.prana||0;
+  document.getElementById('ls-dodge').textContent=p.dodge||0;
+  const pd=document.getElementById('lob-path-display');
+  const path=PATHS.find(x=>x.id===p.path)||PATHS[5];
+  pd.innerHTML=`<div class="path-display">${path.icon} สาย${path.name} — ${path.desc}</div>`;
+}
+
+// ══════════════════════════════════════════════
+//  BATTLE START
+// ══════════════════════════════════════════════
+function startBattle(){
+  if(!savedProfile){alert('กรุณาตั้งค่าโปรไฟล์ก่อน!');sw('profile');return;}
+  if(!monsters.length){alert('ยังไม่มีสัตว์ปิศาจ! กรุณาเพิ่มผ่านหน้าแอดมิน');return;}
+  const sel=document.getElementById('monster-select');
+  const idx=sel && sel.value!=='' ? parseInt(sel.value) : Math.floor(Math.random()*monsters.length);
+  curMon = JSON.parse(JSON.stringify(monsters[idx] || monsters[0]));
+  const p=savedProfile;
+  const path=p.path||'other';
+
+  // Patpao debuf
+  let monDebuf = path==='patpao' ? 2 : 0;
+
+  B = {active:true,turn:0,playerHP:p.hp,playerMaxHP:p.hp,
+    monHP:curMon.hp,monMaxHP:curMon.hp,
+    defending:false,dodging:false,shielded:false,monDebuf:0,purifyTurns:0,purifyCD:0,healCD:0,arrayCD:0,arrayBlock:false,
+    log:[],dmgGiven:0,dmgTaken:0,
+    acts:{atk:0,def:0,dodge:0,heal:0,trap:0,item:0,purify:0,array:0},
+    trapBonus:0,luckyTurn:false};
+
+  // Setup UI
+  document.getElementById('m-art').textContent=curMon.art;
+  document.getElementById('m-name').textContent=curMon.name;
+  document.getElementById('m-sub').textContent=`[${curMon.rank}] ความยาก ${curMon.diff}/10 — ${curMon.desc}`;
+  const eb=document.getElementById('m-el-badge');
+  eb.textContent=EL[curMon.element]+' '+ELN[curMon.element];
+  eb.style.color=ELC[curMon.element];eb.style.borderColor=ELC[curMon.element];eb.style.background='rgba(0,0,0,0.3)';
+  const rb=document.getElementById('m-rank-badge');
+  rb.textContent='['+curMon.rank+']';rb.style.color=RANK_COLOR[curMon.rank]||'#888';
+  rb.style.border='1px solid '+(RANK_COLOR[curMon.rank]||'#888');rb.style.background='rgba(0,0,0,0.3)';
+
+  // Heal button show/hide
+  document.getElementById('btn-heal').style.display = path==='raksa'?'block':'none';
+  document.getElementById('btn-purify').style.display = path==='patpao'?'block':'none';
+  document.getElementById('btn-array').style.display = path==='kayokl'?'block':'none';
+
+  document.getElementById('m-status').innerHTML='';
+  document.getElementById('p-status').innerHTML='';
+  document.getElementById('battle-log').innerHTML='';
+  document.getElementById('dice-face').textContent='🎲';
+  document.getElementById('dice-res').textContent='';
+
+  updateHPBars();
+  document.getElementById('battle-lobby').style.display='none';
+  document.getElementById('battle-arena').style.display='block';
+  document.getElementById('battle-result').style.display='none';
+
+  addLog(`⚔ เริ่มต่อสู้! ${curMon.name} [${curMon.rank}] ปรากฏตัว`,'le-info');
+  addLog(`❤ HP สัตว์ปิศาจ: ${curMon.hp} | โจมตี: ${curMon.atk} | ป้องกัน: ${curMon.def} | หลบ: ${curMon.dodge}`,'le-sys');
+  
+  setSkills(true);
+}
+
+// ══════════════════════════════════════════════
+//  UI HELPERS
+// ══════════════════════════════════════════════
+function updateHPBars(){
+  const pp=Math.max(0,B.playerHP/B.playerMaxHP*100);
+  const mp=Math.max(0,B.monHP/B.monMaxHP*100);
+  document.getElementById('p-hp-bar').style.width=pp+'%';
+  document.getElementById('m-hp-bar').style.width=mp+'%';
+  document.getElementById('p-hp-txt').textContent=B.playerHP+'/'+B.playerMaxHP;
+  document.getElementById('m-hp-txt').textContent=B.monHP+'/'+curMon.hp;
+  updateTrapBtn();
+}
+
+function updateTrapBtn(){
+  const pct=B.monHP/B.monMaxHP;
+  const btn=document.getElementById('btn-trap');
+  const note=document.getElementById('trap-note');
+  if(pct<=0.10){
+    btn.disabled=false;
+    note.textContent=hasItem('cage')?'🪤 สัตว์ปิศาจอ่อนแอพอแล้ว — ใช้กรงสัตว์เพื่อจับได้!':'🪤 ต้องมีไอเทมกรงสัตว์จึงจะจับกุมสำเร็จ';
+    note.style.color='var(--gold)';
+  } else {
+    btn.disabled=true;
+    const pctLeft=Math.ceil(pct*100);
+    note.textContent=`🪤 จับได้เมื่อสัตว์ปิศาจ HP เหลือ ≤10% (ตอนนี้ ${pctLeft}%)`;
+    note.style.color='var(--muted)';
+  }
+}
+
+function setSkills(on){
+  ['btn-atk','btn-def','btn-dodge','btn-heal','btn-trap','btn-purify','btn-array','btn-item'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.disabled=!on;
+  });
+  if(on){
+    updateTrapBtn();
+    const hp=document.getElementById('btn-heal'); if(hp && hp.style.display!=='none') hp.disabled = B.healCD>0;
+    const pp=document.getElementById('btn-purify'); if(pp && pp.style.display!=='none') pp.disabled = B.purifyCD>0;
+    const ap=document.getElementById('btn-array'); if(ap && ap.style.display!=='none') ap.disabled = B.arrayCD>0;
+  }
+}
+
+function tickCooldowns(){
+  if(B.healCD>0) B.healCD--;
+  if(B.purifyCD>0) B.purifyCD--;
+  if(B.arrayCD>0) B.arrayCD--;
+  if(B.purifyTurns>0){B.purifyTurns--;if(B.purifyTurns===0) B.monDebuf=0;}
+}
+
+function addLog(msg,cls='le-info'){
+  const box=document.getElementById('battle-log');
+  const d=document.createElement('div');
+  d.className='log-entry '+cls;
+  d.textContent=msg;
+  box.appendChild(d);
+  box.scrollTop=box.scrollHeight;
+}
+
+// ══════════════════════════════════════════════
+//  ELEMENT BONUS
+// ══════════════════════════════════════════════
+function elBonus(pEl,mEl){
+  if(EL_CHAIN[pEl]===mEl) return {mult:1.5,txt:'💥 ธาตุได้เปรียบ!'};
+  if(EL_CHAIN[mEl]===pEl) return {mult:0.7,txt:'⚠ ธาตุเสียเปรียบ'};
+  return {mult:1.0,txt:''};
+}
+
+// ══════════════════════════════════════════════
+//  ACTION
+// ══════════════════════════════════════════════
+function act(action){
+  if(!B.active) return;
+  if(action==='attack'){
+    // Open element picker
+    openElModal(action);
+    return;
+  }
+  doAction(action,null);
+}
+
+function openElModal(forAction){
+  const box=document.getElementById('el-modal-btns');
+  box.innerHTML='';
+  const p=savedProfile;
+  const els=['earth','water','wind','fire','wood','metal'];
+  els.forEach(el=>{
+    const val=p[el]||0;
+    const btn=document.createElement('button');
+    btn.className='sk atk';
+    btn.style.padding='10px 4px';
+    btn.innerHTML=`<span class="si">${EL[el]}</span>${ELN[el]}<br><span style="font-size:0.65rem;color:var(--gold2)">+${val}</span>`;
+    btn.onclick=()=>{
+      document.getElementById('el-modal').classList.remove('show');
+      doAction(forAction,el);
+    };
+    box.appendChild(btn);
+  });
+  document.getElementById('el-modal').classList.add('show');
+}
+
+async function doAction(action,chosenEl){
+  if(!B.active) return;
+  setSkills(false);
+  B.turn++;
+  document.getElementById('turn-badge').textContent=`เทิร์น ${B.turn}`;
+  const p=savedProfile;
+  const path=p.path||'other';
+
+  // Lucky turn for Kayokl
+  B.luckyTurn = path==='kayokl' && Math.random()<0.3;
+
+  let prana = p.prana||0;
+  let knowledge = p.knowledge||0;
+  let dodgeStat = p.dodge||0;
+  let elVal = chosenEl ? (p[chosenEl]||0) : 0;
+  let monAtk = Math.max(0,(curMon.atk||10)-B.monDebuf);
+  let monDef = Math.max(0,(curMon.def||4)-B.monDebuf);
+  let monDodge = Math.max(0,(curMon.dodge||2)-B.monDebuf);
+
+  let roll=0,dmg=0,txt='';
+
+  if(action==='attack'){
+    B.acts.atk++;
+    let diceMax = 20+prana;
+    roll = Math.floor(Math.random()*diceMax)+1;
+    if(B.luckyTurn){roll+=2;addLog(`🎭 ค่ายกล! เต๋าได้โบนัส +2`,'le-info');}
+    let pathBonus = (path==='ruaisian' && dominantElements(p).includes(chosenEl)) ? 5 : 0;
+    let total = roll + elVal + pathBonus;
+    const {mult,txt:etxt} = elBonus(chosenEl,curMon.element);
+    dmg = Math.max(1,Math.floor((total - monDef*0.5)*mult));
+    B.monHP = Math.max(0,B.monHP-dmg);
+    B.dmgGiven+=dmg;
+    txt=`⚔ โจมตีด้วย${EL[chosenEl]}${ELN[chosenEl]}! `;
+    if(etxt) txt+=etxt+' ';
+    if(path==='ruaisian') txt+=`(รั่วเซียน +5) `;
+    txt+=`เต๋า:${roll} +ธาตุ:${elVal}${pathBonus?'+รั่วเซียน:5':''} = ${total} → ดาเมจ ${dmg}`;
+    addLog(txt, roll>=diceMax?'le-crit':'le-dmg');
+    await animDice(Math.min(roll,20));
+    document.getElementById('dice-res').textContent=`เต๋า 1d${diceMax}: ${roll}${pathBonus?' (+5 รั่วเซียน)':''}`;
+  } else if(action==='defend'){
+    B.acts.def++;
+    let diceMax=20+prana;
+    roll=Math.floor(Math.random()*diceMax)+1;
+    if(B.luckyTurn){roll+=2;}
+    let pathBonus=0;
+    B.defending=true;
+    B.shielded=false;
+    addLog(`🛡 ป้องกัน! เต๋า 1d${diceMax}+ปราณ${pathBonus?' +5รั่วเซียน':''}: ${roll+pathBonus} — รับแดเมจลดลงครึ่งหนึ่ง`,'le-info');
+    await animDice(Math.min(roll,20));
+    document.getElementById('dice-res').textContent=`เต๋าป้องกัน: ${roll+pathBonus}`;
+  } else if(action==='dodge'){
+    B.acts.dodge++;
+    let playerRoll=d20(dodgeStat);
+    let monRoll=Math.max(0,d20(monDodge)-B.monDebuf);
+    if(B.luckyTurn) playerRoll+=2;
+    B.dodging = playerRoll>monRoll;
+    addLog(`💨 หลบหลีก! ผู้เล่น: 1d20+${dodgeStat}=${playerRoll} vs สัตว์ปิศาจ: 1d20+${monDodge}=${monRoll} → ${B.dodging?'หลบสำเร็จ! ไม่รับดาเมจ':'หลบไม่สำเร็จ!'}`,B.dodging?'le-dodge':'le-mon');
+    await animDice(playerRoll>20?20:playerRoll);
+    document.getElementById('dice-res').textContent=`หลบ: ${playerRoll} vs สัตว์ปิศาจ: ${monRoll}`;
+  } else if(action==='heal'){
+    if(path!=='raksa'){addLog('💖 เฉพาะสายรักษาเท่านั้นที่ใช้สกิลนี้ได้','le-sys');setSkills(true);return;}
+    if(B.healCD>0){addLog(`💖 ฮีลยังติดคูลดาวน์อีก ${B.healCD} เทิร์น`,'le-sys');setSkills(true);return;}
+    B.acts.heal++;
+    const raw=Math.floor(Math.random()*20)+1;
+    roll=raw+(prana*2);
+    let healed=Math.min(B.playerMaxHP-B.playerHP,roll);
+    B.playerHP=Math.min(B.playerMaxHP,B.playerHP+healed);
+    B.healCD=3;
+    addLog(`💖 ฮีลตัวเอง! 1d20(${raw}) + ปราณรวมx2(${prana*2}) = ${roll} → ฟื้น HP +${healed}`,'le-heal');
+    await animDice(raw);
+    document.getElementById('dice-res').textContent=`ฮีล: ${roll}`;
+  } else if(action==='purify'){
+    if(path!=='patpao'){addLog('🌀 เฉพาะสายปัดเป่าเท่านั้นที่ใช้สกิลนี้ได้','le-sys');setSkills(true);return;}
+    if(B.purifyCD>0){addLog(`🌀 ปัดเป่ายังติดคูลดาวน์อีก ${B.purifyCD} เทิร์น`,'le-sys');setSkills(true);return;}
+    B.acts.purify++;
+    B.monDebuf=2;B.purifyTurns=2;B.purifyCD=3;
+    addLog('🌀 ปัดเป่าสำเร็จ! สัตว์ปิศาจเต๋า -2 เป็นเวลา 2 เทิร์น','le-info');
+    document.getElementById('dice-res').textContent='ปัดเป่า: สัตว์ปิศาจ -2';
+  } else if(action==='array'){
+    if(path!=='kayokl'){addLog('☯ เฉพาะสายค่ายกลเท่านั้นที่ใช้สกิลนี้ได้','le-sys');setSkills(true);return;}
+    if(B.arrayCD>0){addLog(`☯ ค่ายกลยังติดคูลดาวน์อีก ${B.arrayCD} เทิร์น`,'le-sys');setSkills(true);return;}
+    B.acts.array++;
+    B.arrayBlock=true;B.arrayCD=3;
+    addLog('☯ กางค่ายกล! สัตว์ปิศาจจะไม่โจมตีในเทิร์นนี้','le-info');
+    document.getElementById('dice-res').textContent='ค่ายกล: บล็อกการโจมตี 1 เทิร์น';
+  } else if(action==='trap'){
+    B.acts.trap++;
+    if(B.monHP/B.monMaxHP>0.10){addLog('🪤 สัตว์ปิศาจยังแข็งแกร่งเกินไป!','le-sys');setSkills(true);return;}
+    if(!hasItem('cage')){addLog('🪤 จับกุมไม่สำเร็จ: ต้องมีไอเทม “กรงสัตว์” ก่อน','le-sys');setSkills(true);return;}
+    let trapRoll=d20(knowledge);
+    let threshold=10;
+    let success=trapRoll>=threshold;
+    addLog(`🪤 จับกุมด้วยกรงสัตว์! 1d20+ความรู้รวม${knowledge}: ${trapRoll} (ต้องได้ ≥${threshold}) → ${success?'สำเร็จ!':'ล้มเหลว'}`,success?'le-cap':'le-sys');
+    await animDice(Math.min(trapRoll,20));
+    document.getElementById('dice-res').textContent=`จับกุม: ${trapRoll}`;
+    if(success){
+      try{await withdrawExternalItemByName('กรงสัตว์',1,`จับ ${curMon.name} ในสัตว์ปิศาจฟาร์ม`);}
+      catch(err){addLog('🪤 จับกุมไม่สำเร็จ: '+err.message,'le-sys');setSkills(true);return;}
+      addItemCount('cage',-1);save();await endBattleResult('capture');return;
+    }
+  }
+
+  updateHPBars();
+  renderStatusTags();
+  if(B.monHP<=0){await endBattleResult('win');return;}
+
+  // Monster turn
+  await wait(500);
+  if(B.arrayBlock){
+    addLog(`☯ ค่ายกลหยุด ${curMon.name} ไว้ได้ สัตว์ปิศาจไม่โจมตีเทิร์นนี้`,'le-info');
+    B.arrayBlock=false;
+  } else if(B.dodging){
+    addLog(`💨 ${curMon.name} พยายามโจมตีแต่ถูกหลบ!`,'le-dodge');
+    B.dodging=false;
+  } else {
+    let mRoll=Math.max(0,dN(Math.max(1,monAtk))-B.monDebuf);
+    let mDmg=mRoll;
+    if(B.defending){mDmg=Math.floor(mDmg*0.5);B.defending=false;}
+    if(B.shielded){mDmg=Math.floor(mDmg*0.5);B.shielded=false;}
+    B.playerHP=Math.max(0,B.playerHP-mDmg);
+    B.dmgTaken+=mDmg;
+    addLog(`👾 ${curMon.name} โจมตี!${B.monDebuf?' (ถูกปัดเป่า -2)':''} ดาเมจ ${mDmg}`,'le-mon');
+  }
+
+  tickCooldowns();
+  updateHPBars();
+  renderStatusTags();
+  if(B.playerHP<=0){await endBattleResult('lose');return;}
+  setSkills(true);
+}
+
+function renderStatusTags(){
+  const ps=document.getElementById('p-status');
+  const ms=document.getElementById('m-status');
+  let ptags=[];
+  if(B.defending) ptags.push('<span class="stag stag-def">🛡 ป้องกัน</span>');
+  if(B.dodging) ptags.push('<span class="stag stag-dodge">💨 หลบหลีก</span>');
+  ps.innerHTML=ptags.join('');
+  let mtags=[];
+  if(B.monDebuf>0) mtags.push(`<span class="stag stag-debuf">🌀 ดีบัพ -${B.monDebuf}</span>`);
+  ms.innerHTML=mtags.join('');
+}
+
+// ══════════════════════════════════════════════
+//  ITEM USE
+// ══════════════════════════════════════════════
+function openItemModal(){
+  const list=document.getElementById('item-modal-list');
+  const avail=inventory.filter(i=>i.count>0);
+  if(!avail.length){list.innerHTML='<div class="notice">ไม่มีไอเทม</div>';
+  } else {
+    list.innerHTML=avail.map(it=>`
+      <div class="mon-admin-card" style="cursor:pointer" onclick="useItem('${it.id}')">
+        <div class="mon-admin-name">${it.icon} ${it.name} (${it.count})</div>
+        <div class="mon-admin-meta">${it.desc}</div>
+      </div>`).join('');
+  }
+  document.getElementById('item-modal').classList.add('show');
+}
+function closeItemModal(){document.getElementById('item-modal').classList.remove('show');}
+
+async function useItem(itemId){
+  closeItemModal();
+  const inv=inventory.find(i=>i.id===itemId);
+  if(!inv||inv.count<=0) return;
+  try{
+    await withdrawExternalItemByName(inv.name,1,`ใช้ ${inv.name} ในสัตว์ปิศาจฟาร์ม`);
+  }catch(err){
+    addLog('🎒 ใช้ไอเทมไม่สำเร็จ: '+err.message,'le-sys');
+    setSkills(true);
+    return;
+  }
+  inv.count--;save();
+  B.acts.item++;
+
+  if(inv.effect==='heal30'){B.playerHP=Math.min(B.playerMaxHP,B.playerHP+30);addLog(`⚗️ ใช้ ${inv.name}! HP +30`,'le-heal');}
+  else if(inv.effect==='heal60'){B.playerHP=Math.min(B.playerMaxHP,B.playerHP+60);addLog(`⚗️ ใช้ ${inv.name}! HP +60`,'le-heal');}
+  else if(inv.effect==='dmg25'){B.monHP=Math.max(0,B.monHP-25);B.dmgGiven+=25;addLog(`💣 ใช้ ${inv.name}! ดาเมจ 25`,'le-dmg');}
+  else if(inv.effect==='shield50'){B.shielded=true;B.defending=true;addLog(`🔮 ใช้ ${inv.name}! โล่มนต์ -50% ดาเมจ`,'le-info');}
+  else if(inv.effect==='elixir'){B.playerHP=Math.min(B.playerMaxHP,B.playerHP+15);addLog(`⚗️ ใช้ ${inv.name}! HP +15`,'le-heal');}
+  updateHPBars();
+  if(B.monHP<=0){await endBattleResult('win');return;}
+
+  // Monster still attacks
+  await wait(400);
+  const p=savedProfile;
+  let monAtk=Math.max(0,(curMon.atk||10)-B.monDebuf);
+  let mDmg=Math.max(0,dN(Math.max(1,monAtk))-B.monDebuf);
+  if(B.defending){mDmg=Math.floor(mDmg*0.5);B.defending=false;B.shielded=false;}
+  B.playerHP=Math.max(0,B.playerHP-mDmg);
+  B.dmgTaken+=mDmg;
+  B.turn++;
+  addLog(`👾 ${curMon.name} โจมตี!${B.monDebuf?' (ถูกปัดเป่า -2)':''} ดาเมจ ${mDmg}`,'le-mon');
+  tickCooldowns();
+  updateHPBars();
+  if(B.playerHP<=0){await endBattleResult('lose');return;}
+  setSkills(true);
+}
+
+// ══════════════════════════════════════════════
+//  BATTLE END
+// ══════════════════════════════════════════════
+async function generateRewards(outcome){
+  const p=savedProfile;
+  const path=p.path||'other';
+  const mult=RANK_MULT[curMon.rank]||1;
+  const rewards=[];
+  let exp=0;
+
+  if(outcome==='win'||outcome==='capture'){
+    exp=Math.floor(curMon.exp*(0.8+Math.random()*0.4));
+    rewards.push({icon:'⭐',name:`EXP +${exp}`,rare:false,notes:`(${curMon.rank} ยาก${curMon.diff}/10)`});
+
+    const goldMin=Math.max(0,Number(curMon.goldMin ?? 8));
+    const goldMax=Math.max(goldMin,Number(curMon.goldMax ?? 23));
+    const gold=Math.floor((Math.random()*(goldMax-goldMin+1)+goldMin)*mult);
+    if(savedProfile){ savedProfile.gold=(Number(savedProfile.gold)||0)+gold; }
+    rewards.push({icon:'💰',name:`เหรียญทอง ${gold} เหรียญ`,rare:false});
+
+    if(outcome==='capture') rewards.push({icon:'📦',name:`สัตว์ปิศาจ: ${curMon.name}`,rare:false});
+
+    const dropTable = getMonsterDropTable(curMon);
+    const rolledDrops = rollMonsterDrops(dropTable, { extraFirstDrop: path==='lomsang' });
+
+    for(const drop of rolledDrops){
+      const itemName = drop.name || drop.id || 'ไอเทมไม่ทราบชื่อ';
+      const qty = Math.max(1, Number(drop.qty||1));
+      const unit = drop.unit || '';
+      const note = drop.note || `ดรอปจาก ${curMon.name}`;
+      const icon = drop.icon || guessItemIcon(itemName);
+      rewards.push({icon, name:`${itemName} x${qty}${unit?` ${unit}`:''}`, rare:Number(drop.rate||0)<=10, notes:Number(drop.rate||0)<=10?'★ ดรอปยาก':''});
+
+      // เก็บสำรองใน inventory ภายในเกมด้วย เพื่อให้หน้าไอเทมเดิมยังแสดงผลได้
+      const invId = drop.id || itemName;
+      const inv=inventory.find(i=>i.id===invId || i.name===itemName);
+      if(inv){inv.count=(Number(inv.count)||0)+qty;}
+      else {inventory.push({id:invId,name:itemName,icon,desc:note,count:qty,effect:'material',unit});}
+
+      // ซิงก์เข้าคลังลูกมูอีกเว็บหนึ่ง
+      try{await depositExternalItemByName(itemName,qty,unit,note);}
+      catch(err){rewards.push({icon:'⚠️',name:`ซิงก์คลังลูกมูไม่สำเร็จ: ${err.message}`,rare:false});}
+    }
+  }
+  save();
+  return {rewards,exp};
+}
+
+function getMonsterDropTable(mon){
+  if(Array.isArray(mon.dropTable) && mon.dropTable.length){
+    return mon.dropTable.map(d=>({
+      name:String(d.name||d.id||'').trim(),
+      id:String(d.id||d.name||'').trim(),
+      qty:Math.max(1,Number(d.qty||1)),
+      unit:String(d.unit||''),
+      rate:Math.min(100,Math.max(0,Number(d.rate||0))),
+      note:String(d.note||''),
+      icon:d.icon||''
+    })).filter(d=>d.name && d.rate>0);
+  }
+  // รองรับข้อมูลเก่า drops:['potion','bomb'] ให้แปลงเป็น 100% ต่อแถว
+  return (mon.drops||[]).map(id=>{
+    const it=inventory.find(i=>i.id===id)||DEFAULT_ITEMS.find(i=>i.id===id)||{};
+    return {id, name:it.name||id, qty:1, unit:it.unit||'', rate:100, note:`ดรอปจาก ${mon.name}`, icon:it.icon||guessItemIcon(it.name||id)};
+  });
+}
+
+function rollMonsterDrops(dropTable,{extraFirstDrop=false}={}){
+  const results=[];
+  for(const drop of dropTable){
+    if(Math.random()*100 < Number(drop.rate||0)) results.push({...drop});
+  }
+  // สายหลอมสร้าง: ถ้ามีรายการดรอปอย่างน้อย 1 รายการ จะได้โบนัสรายการแรกอีก 1 ชิ้นแบบไม่สุ่ม
+  if(extraFirstDrop && dropTable.length){
+    results.push({...dropTable[0], note:(dropTable[0].note||'')+' | โบนัสสายหลอมสร้าง'});
+  }
+  return results;
+}
+
+function guessItemIcon(name){
+  const n=String(name||'');
+  if(n.includes('กรง')) return '🪤';
+  if(n.includes('ยา')||n.includes('โอสถ')) return '🧪';
+  if(n.includes('หิน')||n.includes('ผลึก')||n.includes('แกน')) return '💎';
+  if(n.includes('เขี้ยว')||n.includes('เล็บ')) return '🦷';
+  if(n.includes('ขน')) return '🪶';
+  return '🎁';
+}
+
+async function endBattleResult(outcome){
+  B.active=false;setSkills(false);
+  const icons={win:'🏆',lose:'💀',capture:'🎊'};
+  const titles={win:'ชนะ!',lose:'แพ้...',capture:'จับสำเร็จ!'};
+  const descs={win:`เอาชนะ ${curMon.name} ได้!`,lose:`พ่ายแพ้ต่อ ${curMon.name}...`,
+    capture:`จับ ${curMon.name} ได้สำเร็จ!`};
+  const outClass={win:'res-win',lose:'res-lose',capture:'res-cap'};
+
+  document.getElementById('res-icon').textContent=icons[outcome];
+  const rt=document.getElementById('res-title');
+  rt.textContent=titles[outcome];rt.className='res-title '+outClass[outcome];
+  document.getElementById('res-desc').textContent=descs[outcome];
+
+  const {rewards,exp}=await generateRewards(outcome);
+  const rbox=document.getElementById('reward-box');
+  if(!rewards.length){rbox.innerHTML='<div style="color:var(--muted)">ไม่ได้รับรางวัล</div>';}
+  else{rbox.innerHTML=rewards.map(r=>`<div class="rw-item"><span class="rw-icon">${r.icon}</span><span>${r.name}${r.rare?`<span class="rw-rare">${r.notes}</span>`:''}</span></div>`).join('');}
+
+  document.getElementById('battle-summary').innerHTML=`
+    เทิร์นที่ใช้: ${B.turn} | ดาเมจที่ให้: ${B.dmgGiven} | ดาเมจที่รับ: ${B.dmgTaken}<br>
+    โจมตี: ${B.acts.atk} | ป้องกัน: ${B.acts.def} | หลบ: ${B.acts.dodge} | ปัดเป่า: ${B.acts.purify||0} | รักษา: ${B.acts.heal} | ค่ายกล: ${B.acts.array||0} | ไอเทม: ${B.acts.item} | จับ: ${B.acts.trap}
+  `;
+
+  // Append to history (read-only)
+  const hItem={
+    id:Date.now(),
+    player:savedProfile?.name || 'ไม่ทราบชื่อตัวละคร',
+    date:new Date().toLocaleString('th-TH'),
+    monster:curMon.name,rank:curMon.rank,diff:curMon.diff,
+    outcome:titles[outcome],outKey:outcome,
+    turns:B.turn,dmgGiven:B.dmgGiven,dmgTaken:B.dmgTaken,
+    exp,rewards,
+    audit:profileSnapshotForAudit()
+  };
+  history.unshift(hItem);
+  if(history.length>50) history=history.slice(0,50);
+  allHistory.unshift(hItem);
+  if(allHistory.length>300) allHistory=allHistory.slice(0,300);
+  if(window.firebaseMonsterFarm?.addBattleHistory){
+    await window.firebaseMonsterFarm.addBattleHistory(hItem).catch(err=>console.warn('บันทึกประวัติกลางไม่สำเร็จ:',err));
+  }
+  save();
+
+  document.getElementById('battle-arena').style.display='none';
+  document.getElementById('battle-result').style.display='block';
+}
+
+function endBattle(){
+  document.getElementById('battle-lobby').style.display='block';
+  document.getElementById('battle-arena').style.display='none';
+  document.getElementById('battle-result').style.display='none';
+  refreshLobby();
+}
+
+
+function profileHasRealStats(p){
+  if(!p) return false;
+  return ['hp','earth','water','wind','fire','wood','metal','prana','dodge','knowledge','gold'].some(k=>Number(p[k]||0)>0) || !!p.path;
+}
+
+function isProfileLocked(){
+  if(!savedProfile) return false;
+  if(savedProfile.profileLocked === true) return true;
+  if(savedProfile.profileLocked === false) return false;
+  // โปรไฟล์เก่าที่เคยกรอกแล้ว แต่ยังไม่มี field profileLocked ให้ถือว่าล็อก
+  return profileHasRealStats(savedProfile);
+}
+
+function setProfileFormLocked(locked){
+  const ids=['p-name','p-hp','p-earth','p-water','p-wind','p-fire','p-wood','p-metal','p-prana','p-dodge','p-knowledge','p-gold'];
+  ids.forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.disabled=locked;
+  });
+  const saveBtn=document.getElementById('profile-save-btn');
+  const adminBtn=document.getElementById('profile-admin-edit-btn');
+  const note=document.getElementById('profile-lock-note');
+  const card=document.querySelector('#screen-profile .card');
+  if(card) card.classList.toggle('profile-locked',locked);
+  if(saveBtn) saveBtn.style.display=locked?'none':'block';
+  if(adminBtn) adminBtn.style.display='none';
+  if(note) note.style.display=locked?'block':'none';
+}
+
+function applyProfileLockUI(){
+  setProfileFormLocked(isProfileLocked() && !isProfileAdminEdit);
+}
+
+function unlockProfileForAdmin(){
+  if(!requireAdmin()) return;
+  isProfileAdminEdit=true;
+  setProfileFormLocked(false);
+  const msg=document.getElementById('save-msg');
+  if(msg){msg.textContent='แอดมินปลดล็อกให้แก้ไขแล้ว';setTimeout(()=>msg.textContent='',2200);}
+  renderPathPicker();
+}
+
+function profileSnapshotForAudit(){
+  const p=savedProfile||{};
+  return {
+    hp:Number(p.hp||0),
+    earth:Number(p.earth||0),
+    water:Number(p.water||0),
+    wind:Number(p.wind||0),
+    fire:Number(p.fire||0),
+    wood:Number(p.wood||0),
+    metal:Number(p.metal||0),
+    prana:Number(p.prana||0),
+    dodge:Number(p.dodge||0),
+    knowledge:Number(p.knowledge||0),
+    gold:Number(p.gold||0),
+    path:p.path||'other'
+  };
+}
+
+function auditStatWarning(audit){
+  if(!audit) return '';
+  const values=[audit.hp,audit.earth,audit.water,audit.wind,audit.fire,audit.wood,audit.metal,audit.prana,audit.dodge,audit.knowledge].map(v=>Number(v||0));
+  const max=Math.max(...values);
+  if(max>=500) return '⚠️ สูงมาก';
+  if(max>=200) return '⚠️ สูงผิดปกติ';
+  if(max>=100) return 'ตรวจสอบ';
+  return '';
+}
+
+
+// ══════════════════════════════════════════════
+//  PROFILE
+// ══════════════════════════════════════════════
+function renderPathPicker(){
+  const grid=document.getElementById('path-grid');
+  grid.innerHTML=PATHS.map(p=>`
+    <div class="path-card ${selectedPath===p.id?'selected':''}" onclick="selectPath('${p.id}')">
+      <div class="path-icon">${p.icon}</div>
+      <div class="path-name">${p.name}</div>
+      <div class="path-desc">${p.desc}</div>
+    </div>`).join('');
+}
+function selectPath(id){if(isProfileLocked()&&!isProfileAdminEdit){alert('ข้อมูลตัวละครถูกล็อกแล้ว ให้แอดมินเป็นคนแก้ไข');return;}selectedPath=id;renderPathPicker();}
+
+function loadProfileForm(){
+  if(!savedProfile) return;
+  const p=savedProfile;
+  document.getElementById('p-name').value=p.name||'';
+  document.getElementById('p-hp').value=p.hp||100;
+  document.getElementById('p-earth').value=p.earth||0;
+  document.getElementById('p-water').value=p.water||0;
+  document.getElementById('p-wind').value=p.wind||0;
+  document.getElementById('p-fire').value=p.fire||0;
+  document.getElementById('p-wood').value=p.wood||0;
+  document.getElementById('p-metal').value=p.metal||0;
+  document.getElementById('p-prana').value=p.prana||0;
+  document.getElementById('p-dodge').value=p.dodge||0;
+  document.getElementById('p-knowledge').value=p.knowledge||0;
+  const goldInput=document.getElementById('p-gold'); if(goldInput) goldInput.value=p.gold||0;
+  if(p.path) selectedPath=p.path;
+  renderPathPicker();
+  renderProfilePreview();
+  applyProfileLockUI();
+}
+
+function saveProfile(){
+  const path=selectedPath||'other';
+  savedProfile={
+    name:document.getElementById('p-name').value||'ลูกมู',
+    hp:parseInt(document.getElementById('p-hp').value)||100,
+    earth:parseInt(document.getElementById('p-earth').value)||0,
+    water:parseInt(document.getElementById('p-water').value)||0,
+    wind:parseInt(document.getElementById('p-wind').value)||0,
+    fire:parseInt(document.getElementById('p-fire').value)||0,
+    wood:parseInt(document.getElementById('p-wood').value)||0,
+    metal:parseInt(document.getElementById('p-metal').value)||0,
+    prana:parseInt(document.getElementById('p-prana').value)||0,
+    dodge:parseInt(document.getElementById('p-dodge').value)||0,
+    knowledge:parseInt(document.getElementById('p-knowledge').value)||0,
+    gold:parseInt(document.getElementById('p-gold')?.value)||0,
+    path,
+    profileLocked:true,
+  };
+  isProfileAdminEdit=false;
+  save();
+  applyProfileLockUI();
+  const msg=document.getElementById('save-msg');
+  msg.textContent='✓ บันทึกสำเร็จ!';setTimeout(()=>msg.textContent='',2000);
+  renderProfilePreview();
+  refreshLobby();
+  renderInventory();
+}
+
+function renderProfilePreview(){
+  if(!savedProfile) return;
+  const p=savedProfile;
+  const path=PATHS.find(x=>x.id===p.path)||PATHS[5];
+  document.getElementById('profile-preview').style.display='block';
+  document.getElementById('prof-preview-content').innerHTML=`
+    <div style="font-size:1.1rem;font-weight:700;color:var(--gold2);margin-bottom:4px">${p.name}</div>
+    <div class="path-display" style="margin-bottom:8px">${path.icon} สาย${path.name} — ${path.desc}</div>
+    <div style="font-size:0.78rem;line-height:2;color:var(--muted)">
+      💚 HP: <span style="color:var(--text)">${p.hp}</span> &nbsp;|&nbsp;
+      ✨ ปราณรวม: <span style="color:var(--text)">${p.prana}</span> &nbsp;|&nbsp;
+      🏃 หลบหลีกรวม: <span style="color:var(--text)">${p.dodge}</span> &nbsp;|&nbsp;
+      📚 ความรู้รวม: <span style="color:var(--text)">${p.knowledge}</span> &nbsp;|&nbsp;
+      💰 เหรียญทอง: <span style="color:var(--text)">${p.gold||0}</span><br>
+      🌍${p.earth} 💧${p.water} 💨${p.wind} 🔥${p.fire} 🌿${p.wood} ⚙️${p.metal}
+    </div>`;
+}
+
+// ══════════════════════════════════════════════
+//  INVENTORY
+// ══════════════════════════════════════════════
+function renderInventory(){
+  const grid=document.getElementById('inv-grid');
+  grid.innerHTML=inventory.map(it=>`
+    <div class="inv-slot ${it.count===0?'empty':''}" onclick="showItemDesc('${it.id}')">
+      <span class="ii">${it.icon}</span>
+      <div class="in">${it.name}</div>
+      <div class="ic">x${it.count}</div>
+    </div>`).join('');
+}
+function showItemDesc(id){
+  const it=inventory.find(i=>i.id===id);
+  if(!it) return;
+  document.getElementById('inv-desc').innerHTML=`<b>${it.icon} ${it.name}</b> (x${it.count})<br><span style="color:var(--muted)">${it.desc||''}</span>`;
+}
+
+let historyFilter='all';
+function setHistoryFilter(name){historyFilter=name;renderHistory();}
+
+// ══════════════════════════════════════════════
+//  HISTORY
+// ══════════════════════════════════════════════
+function renderHistory(){
+  const el=document.getElementById('hist-list');
+  const sourceHistory = allHistory.length ? allHistory : history;
+  if(!sourceHistory.length){el.innerHTML='<div class="notice">ยังไม่มีประวัติ</div>';return;}
+  const players=[...new Set(sourceHistory.map(h=>h.player||'ไม่ทราบชื่อตัวละคร'))];
+  const filtered = historyFilter==='all' ? sourceHistory : sourceHistory.filter(h=>(h.player||'ไม่ทราบชื่อตัวละคร')===historyFilter);
+  const filterUI=`
+    <div class="card" style="padding:.65rem;margin-bottom:.65rem">
+      <div class="card-title">แยกดูตามตัวละคร</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-sm ${historyFilter==='all'?'btn-gold':'btn-out'}" onclick="setHistoryFilter('all')">ทั้งหมด</button>
+        ${players.map(p=>`<button class="btn btn-sm ${(historyFilter===p)?'btn-gold':'btn-out'}" onclick="setHistoryFilter('${String(p).replaceAll("'","&#039;")}')">${escapeHtml(p)}</button>`).join('')}
+      </div>
+    </div>`;
+  if(!filtered.length){el.innerHTML=filterUI+'<div class="notice">ยังไม่มีประวัติของตัวละครนี้</div>';return;}
+  el.innerHTML=filterUI+filtered.map(h=>{
+    const oc={win:'#27ae60',lose:'#e74c3c',capture:'#9b59b6'}[h.outKey]||'#888';
+    const rwStr=(h.rewards||[]).map(r=>`${r.icon||''}${r.name||''}`).join(', ')||'ไม่มีรางวัล';
+    return `<div class="hist-item">
+      <div class="hist-head">
+        <span class="hist-mon">${escapeHtml(h.player||'ไม่ทราบชื่อตัวละคร')} — ${escapeHtml(h.monster||'')} [${escapeHtml(h.rank||'')}] ยาก${h.diff||'-'}/10</span>
+        <span class="hist-out" style="color:${oc}">${escapeHtml(h.outcome||'')}</span>
+      </div>
+      <div class="hist-meta">
+        📅 ${escapeHtml(h.date||'')} | เทิร์น: ${h.turns||0} | ดาเมจให้: ${h.dmgGiven||0} | ดาเมจรับ: ${h.dmgTaken||0}${h.exp?` | EXP: +${h.exp}`:''}
+      </div>
+      <div class="hist-rewards">📦 ${escapeHtml(rwStr)}</div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════
+//  ADMIN
+// ══════════════════════════════════════════════
+const ADMIN_PASSWORD='1234';
+let isAdminUnlocked=false;
+let admCurrentTab='list';
+function requireAdmin(){
+  if(isAdminUnlocked) return true;
+  const pass=prompt('กรอกรหัสแอดมิน');
+  if(pass===ADMIN_PASSWORD){isAdminUnlocked=true;return true;}
+  if(pass!==null) alert('รหัสไม่ถูกต้อง');
+  return false;
+}
+function openAdmin(){
+  if(!requireAdmin()) return;
+  document.getElementById('admin-modal').classList.add('show');
+  admTab('list');
+}
+function closeAdmin(){document.getElementById('admin-modal').classList.remove('show');}
+
+function admTab(tab){
+  if((tab==='add'||tab==='items') && !requireAdmin()) return;
+  admCurrentTab=tab;
+  ['list','add','items','audit','players'].forEach(t=>{
+    document.getElementById('adm-tab-'+t).classList.toggle('active',t===tab);
+    document.getElementById('adm-'+t+'-panel').style.display=t===tab?'block':'none';
+  });
+  if(tab==='list') renderAdmMonList();
+  if(tab==='items') renderAdmItems();
+  if(tab==='audit') renderAdminAudit();
+  if(tab==='players') adminLoadPlayers();
+}
+
+
+function setAdminAuditFilter(name){
+  adminAuditFilter=name;
+  renderAdminAudit();
+}
+
+function renderAdminAudit(){
+  const el=document.getElementById('adm-audit-list');
+  if(!el) return;
+  const src=(allHistory&&allHistory.length)?allHistory:history;
+  if(!src.length){el.innerHTML='<div class="notice">ยังไม่มีประวัติให้ตรวจ</div>';return;}
+  const players=[...new Set(src.map(h=>h.player||'ไม่ทราบชื่อตัวละคร'))];
+  const filtered=adminAuditFilter==='all'?src:src.filter(h=>(h.player||'ไม่ทราบชื่อตัวละคร')===adminAuditFilter);
+  const filters=`
+    <div class="audit-filter">
+      <button class="btn btn-sm ${adminAuditFilter==='all'?'btn-gold':'btn-out'}" onclick="setAdminAuditFilter('all')">ทั้งหมด</button>
+      ${players.map((p,idx)=>`<button class="btn btn-sm ${adminAuditFilter===p?'btn-gold':'btn-out'}" onclick="setAdminAuditFilter(${JSON.stringify(p)})">${escapeHtml(p)}</button>`).join('')}
+    </div>`;
+  const rows=filtered.map(h=>{
+    const a=h.audit||{};
+    const warn=auditStatWarning(a);
+    const rewards=(h.rewards||[]).map(r=>r.name||'').filter(Boolean).join(', ')||'ไม่มี';
+    return `<tr>
+      <td>${escapeHtml(h.date||'')}</td>
+      <td><b>${escapeHtml(h.player||'ไม่ทราบชื่อตัวละคร')}</b><div class="audit-small">${escapeHtml(h.outcome||'')} ${escapeHtml(h.monster||'')}</div></td>
+      <td>${Number(a.hp||0)}</td>
+      <td>ดิน ${Number(a.earth||0)}<br>น้ำ ${Number(a.water||0)}<br>ลม ${Number(a.wind||0)}<br>ไฟ ${Number(a.fire||0)}<br>ไม้ ${Number(a.wood||0)}<br>ทอง ${Number(a.metal||0)}</td>
+      <td>${Number(a.prana||0)}</td>
+      <td>${Number(a.dodge||0)}</td>
+      <td>${Number(a.knowledge||0)}</td>
+      <td>${Number(a.gold||0)}</td>
+      <td>${Number(h.turns||0)}</td>
+      <td>${Number(h.dmgGiven||0)} / ${Number(h.dmgTaken||0)}</td>
+      <td>${escapeHtml(rewards)}</td>
+      <td class="${warn?'audit-warn':''}">${warn||'—'}</td>
+      <td><button class="btn btn-out btn-sm" onclick="openAdminPlayerEditor(${JSON.stringify(h.player||'')})">แก้ผู้เล่น</button></td>
+    </tr>`;
+  }).join('');
+  el.innerHTML=filters+`
+    <div class="audit-table-wrap">
+      <table class="audit-table">
+        <thead><tr>
+          <th>เวลา</th><th>ตัวละคร / ผล</th><th>HP เริ่ม</th><th>ธาตุทั้ง 6</th><th>ปราณรวม</th><th>หลบหลีกรวม</th><th>ความรู้รวม</th><th>ทองก่อนรับรางวัล</th><th>เทิร์น</th><th>ดาเมจ ให้/รับ</th><th>รางวัล</th><th>สถานะ</th><th>แก้ไข</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+
+
+
+let adminPlayersCache=[];
+let adminSelectedPlayerKey='';
+
+async function adminLoadPlayers(preselectName=''){
+  const sel=document.getElementById('admin-player-select');
+  const box=document.getElementById('admin-player-editor');
+  if(sel) sel.innerHTML='<option value="">กำลังโหลด...</option>';
+  if(box) box.innerHTML='<div class="notice">กำลังโหลดรายชื่อผู้เล่น...</div>';
+  try{
+    if(!window.firebaseMonsterFarm?.listPlayers) throw new Error('Firebase ยังไม่พร้อม หรือไม่มีฟังก์ชัน listPlayers');
+    adminPlayersCache=await window.firebaseMonsterFarm.listPlayers();
+    if(!adminPlayersCache.length){
+      if(sel) sel.innerHTML='<option value="">ยังไม่มีผู้เล่น</option>';
+      if(box) box.innerHTML='<div class="notice">ยังไม่มีผู้เล่นในระบบ</div>';
+      return;
+    }
+    if(sel){
+      sel.innerHTML='<option value="">— เลือกตัวละคร —</option>'+adminPlayersCache.map(p=>{
+        const name=p.savedProfile?.name || p.currentPlayerName || p.key || 'ไม่ทราบชื่อ';
+        return `<option value="${escapeHtml(p.key)}">${escapeHtml(name)}</option>`;
+      }).join('');
+    }
+    if(preselectName){
+      const found=adminPlayersCache.find(p=>(p.savedProfile?.name||'')===preselectName || p.key===preselectName);
+      if(found && sel){ sel.value=found.key; adminSelectPlayer(found.key); return; }
+    }
+    if(box) box.innerHTML='<div class="notice">เลือกตัวละครเพื่อแก้ไข</div>';
+  }catch(err){
+    console.error(err);
+    if(sel) sel.innerHTML='<option value="">โหลดไม่สำเร็จ</option>';
+    if(box) box.innerHTML=`<div class="notice warn">${escapeHtml(err.message||err)}</div>`;
+  }
+}
+
+function openAdminPlayerEditor(playerName){
+  if(!requireAdmin()) return;
+  admTab('players');
+  setTimeout(()=>adminLoadPlayers(playerName),50);
+}
+
+function adminSelectPlayer(key){
+  adminSelectedPlayerKey=key;
+  const box=document.getElementById('admin-player-editor');
+  if(!box) return;
+  if(!key){ box.innerHTML='<div class="notice">เลือกตัวละครเพื่อแก้ไข</div>'; return; }
+  const doc=adminPlayersCache.find(p=>p.key===key);
+  if(!doc){ box.innerHTML='<div class="notice warn">ไม่พบข้อมูลผู้เล่น</div>'; return; }
+  const p=doc.savedProfile||{};
+  const path=p.path||'other';
+  box.innerHTML=`
+    <div class="mon-admin-card">
+      <div class="mon-admin-name">แก้ไขตัวละคร: ${escapeHtml(p.name||doc.key)}</div>
+      <div class="mon-admin-meta">แก้จากฝั่งแอดมินเท่านั้น ผู้เล่นจะยังถูกล็อกโปรไฟล์หลังบันทึก</div>
+      <div class="admin-player-grid">
+        <div class="fg"><label class="fl">ชื่อผู้เล่น</label><input type="text" id="adm-p-name" value="${escapeHtml(p.name||'')}"></div>
+        <div class="fg"><label class="fl">HP</label><input type="number" id="adm-p-hp" value="${Number(p.hp||100)}"></div>
+        <div class="fg"><label class="fl">เหรียญทอง</label><input type="number" id="adm-p-gold" value="${Number(p.gold||0)}"></div>
+        <div class="fg"><label class="fl">ดิน</label><input type="number" id="adm-p-earth" value="${Number(p.earth||0)}"></div>
+        <div class="fg"><label class="fl">น้ำ</label><input type="number" id="adm-p-water" value="${Number(p.water||0)}"></div>
+        <div class="fg"><label class="fl">ลม</label><input type="number" id="adm-p-wind" value="${Number(p.wind||0)}"></div>
+        <div class="fg"><label class="fl">ไฟ</label><input type="number" id="adm-p-fire" value="${Number(p.fire||0)}"></div>
+        <div class="fg"><label class="fl">ไม้</label><input type="number" id="adm-p-wood" value="${Number(p.wood||0)}"></div>
+        <div class="fg"><label class="fl">ทอง</label><input type="number" id="adm-p-metal" value="${Number(p.metal||0)}"></div>
+        <div class="fg"><label class="fl">ปราณรวม</label><input type="number" id="adm-p-prana" value="${Number(p.prana||0)}"></div>
+        <div class="fg"><label class="fl">หลบหลีกรวม</label><input type="number" id="adm-p-dodge" value="${Number(p.dodge||0)}"></div>
+        <div class="fg"><label class="fl">ความรู้รวม</label><input type="number" id="adm-p-knowledge" value="${Number(p.knowledge||0)}"></div>
+      </div>
+      <div class="fg" style="margin-top:8px"><label class="fl">สายตัวละคร</label>
+        <select id="adm-p-path">
+          ${PATHS.map(x=>`<option value="${x.id}" ${x.id===path?'selected':''}>${x.icon} ${x.name}</option>`).join('')}
+        </select>
+      </div>
+      <div class="admin-player-actions">
+        <button class="btn btn-gold" onclick="adminSaveSelectedPlayer()">💾 บันทึกผู้เล่น</button>
+        <button class="btn btn-out" onclick="adminSelectPlayer('${escapeHtml(key)}')">↺ คืนค่าจากฐานข้อมูล</button>
+      </div>
+      <div class="admin-player-mini">เมื่อกดบันทึก ระบบจะตั้ง <b>profileLocked=true</b> เพื่อไม่ให้ผู้เล่นแก้เอง</div>
+    </div>`;
+}
+
+async function adminSaveSelectedPlayer(){
+  if(!requireAdmin()) return;
+  const key=adminSelectedPlayerKey;
+  const oldDoc=adminPlayersCache.find(p=>p.key===key);
+  if(!key || !oldDoc){ alert('กรุณาเลือกผู้เล่นก่อน'); return; }
+  const oldProfile=oldDoc.savedProfile||{};
+  const newProfile={
+    ...oldProfile,
+    name:document.getElementById('adm-p-name')?.value||oldProfile.name||'ไม่ทราบชื่อ',
+    hp:parseInt(document.getElementById('adm-p-hp')?.value)||100,
+    earth:parseInt(document.getElementById('adm-p-earth')?.value)||0,
+    water:parseInt(document.getElementById('adm-p-water')?.value)||0,
+    wind:parseInt(document.getElementById('adm-p-wind')?.value)||0,
+    fire:parseInt(document.getElementById('adm-p-fire')?.value)||0,
+    wood:parseInt(document.getElementById('adm-p-wood')?.value)||0,
+    metal:parseInt(document.getElementById('adm-p-metal')?.value)||0,
+    prana:parseInt(document.getElementById('adm-p-prana')?.value)||0,
+    dodge:parseInt(document.getElementById('adm-p-dodge')?.value)||0,
+    knowledge:parseInt(document.getElementById('adm-p-knowledge')?.value)||0,
+    gold:parseInt(document.getElementById('adm-p-gold')?.value)||0,
+    path:document.getElementById('adm-p-path')?.value||oldProfile.path||'other',
+    profileLocked:true
+  };
+  try{
+    await window.firebaseMonsterFarm.adminSavePlayer(key,{savedProfile:newProfile});
+    if(playerSession?.key===key){
+      savedProfile=newProfile;
+      selectedPath=newProfile.path||'other';
+      save();
+      loadProfileForm();
+      refreshLobby();
+    }
+    alert('บันทึกข้อมูลผู้เล่นแล้ว');
+    await adminLoadPlayers(newProfile.name);
+  }catch(err){
+    console.error(err);
+    alert(err.message||'บันทึกไม่สำเร็จ');
+  }
+}
+
+function renderAdmMonList(){
+  const el=document.getElementById('adm-mon-list');
+  if(!monsters.length){el.innerHTML='<div class="notice">ยังไม่มีสัตว์ปิศาจ</div>';return;}
+  el.innerHTML=monsters.map((m,i)=>{
+    const dropTable=getMonsterDropTable(m);
+    const dropText=dropTable.length?dropTable.map(d=>`${d.name} ${d.qty||1}${d.unit||''} (${d.rate}%)`).join(' · '):'ไม่มี';
+    return `
+    <div class="mon-admin-card">
+      <div class="mon-admin-name">${m.art} ${m.name} [${m.rank}] ยาก${m.diff}/10</div>
+      <div class="mon-admin-meta">HP:${m.hp} ATK:${m.atk} DEF:${m.def} | EXP:${m.exp} | เหรียญ:${m.goldMin ?? 8}-${m.goldMax ?? 23}</div>
+      <div class="mon-admin-meta">ดรอป: ${dropText}</div>
+      <div class="mon-admin-btns">
+        <button class="btn btn-out btn-sm" onclick="admEditMon(${i})">✏️ แก้ไข</button>
+        <button class="btn btn-red btn-sm" onclick="admDelMon(${i})">🗑 ลบ</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+
+function escapeHtml(str){return String(str??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('\"','&quot;').replaceAll("'",'&#039;');}
+function escapeAttr(str){return escapeHtml(str).replaceAll('`','&#096;');}
+
+function admAddDropRow(data={}){
+  const wrap=document.getElementById('adm-drop-rows');
+  if(!wrap) return;
+  const row=document.createElement('div');
+  row.className='drop-rate-row';
+  row.innerHTML=`
+    <input type="text" class="drop-name" placeholder="เช่น หินจิตวิญญาณ" value="${escapeAttr(data.name||'')}">
+    <input type="number" class="drop-qty" min="1" value="${Number(data.qty||1)}">
+    <input type="text" class="drop-unit" placeholder="ชิ้น" value="${escapeAttr(data.unit||'')}">
+    <input type="number" class="drop-rate" min="0" max="100" step="0.1" value="${Number(data.rate ?? 50)}">
+    <input type="text" class="drop-note" placeholder="โน้ตดรอป" value="${escapeAttr(data.note||'')}">
+    <button type="button" class="btn btn-red btn-sm drop-remove" onclick="this.closest('.drop-rate-row').remove()">×</button>`;
+  wrap.appendChild(row);
+}
+
+function admSetDropRows(dropTable=[]){
+  const wrap=document.getElementById('adm-drop-rows');
+  if(!wrap) return;
+  wrap.innerHTML='';
+  if(!dropTable.length){admAddDropRow({name:'หินจิตวิญญาณ',qty:1,unit:'ชิ้น',rate:60,note:''});return;}
+  dropTable.forEach(d=>admAddDropRow(d));
+}
+
+function admReadDropRows(){
+  const rows=[...document.querySelectorAll('#adm-drop-rows .drop-rate-row')];
+  return rows.map(row=>({
+    name:row.querySelector('.drop-name')?.value.trim()||'',
+    id:row.querySelector('.drop-name')?.value.trim()||'',
+    qty:Math.max(1,Number(row.querySelector('.drop-qty')?.value||1)),
+    unit:row.querySelector('.drop-unit')?.value.trim()||'',
+    rate:Math.min(100,Math.max(0,Number(row.querySelector('.drop-rate')?.value||0))),
+    note:row.querySelector('.drop-note')?.value.trim()||''
+  })).filter(d=>d.name && d.rate>0);
+}
+
+function admNewMon(){
+  document.getElementById('adm-edit-idx').value=-1;
+  ['adm-m-name','adm-m-art','adm-m-desc'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('adm-m-hp').value=50;
+  document.getElementById('adm-m-atk').value=10;
+  document.getElementById('adm-m-def').value=4;
+  document.getElementById('adm-m-dodge').value=2;
+  document.getElementById('adm-m-exp').value=20;
+  document.getElementById('adm-m-gold-min').value=8;
+  document.getElementById('adm-m-gold-max').value=23;
+  document.getElementById('adm-m-diff').value=3;
+  document.getElementById('adm-m-el').value='earth';
+  document.getElementById('adm-m-rank').value='C';
+  admSetDropRows([]);
+}
+
+function admEditMon(idx){
+  const m=monsters[idx];
+  document.getElementById('adm-edit-idx').value=idx;
+  document.getElementById('adm-m-name').value=m.name;
+  document.getElementById('adm-m-art').value=m.art;
+  document.getElementById('adm-m-el').value=m.element;
+  document.getElementById('adm-m-rank').value=m.rank;
+  document.getElementById('adm-m-diff').value=m.diff||3;
+  document.getElementById('adm-m-hp').value=m.hp;
+  document.getElementById('adm-m-atk').value=m.atk;
+  document.getElementById('adm-m-def').value=m.def;
+  document.getElementById('adm-m-dodge').value=m.dodge||2;
+  document.getElementById('adm-m-exp').value=m.exp||20;
+  document.getElementById('adm-m-gold-min').value=m.goldMin ?? 8;
+  document.getElementById('adm-m-gold-max').value=m.goldMax ?? 23;
+  document.getElementById('adm-m-desc').value=m.desc||'';
+  admSetDropRows(getMonsterDropTable(m));
+  admTab('add');
+}
+
+function admSaveMon(){
+  const idx=parseInt(document.getElementById('adm-edit-idx').value);
+  const dropTable=admReadDropRows();
+  const mon={
+    name:document.getElementById('adm-m-name').value||'สัตว์ปิศาจใหม่',
+    art:document.getElementById('adm-m-art').value||'👾',
+    element:document.getElementById('adm-m-el').value,
+    rank:document.getElementById('adm-m-rank').value,
+    diff:parseInt(document.getElementById('adm-m-diff').value)||3,
+    hp:parseInt(document.getElementById('adm-m-hp').value)||50,
+    atk:parseInt(document.getElementById('adm-m-atk').value)||10,
+    def:parseInt(document.getElementById('adm-m-def').value)||4,
+    dodge:parseInt(document.getElementById('adm-m-dodge').value)||2,
+    exp:parseInt(document.getElementById('adm-m-exp').value)||20,
+    goldMin:Math.max(0,parseInt(document.getElementById('adm-m-gold-min').value)||0),
+    goldMax:Math.max(0,parseInt(document.getElementById('adm-m-gold-max').value)||0),
+    desc:document.getElementById('adm-m-desc').value,
+    dropTable,
+    drops:dropTable.map(d=>d.name), // เก็บชื่อไว้เพื่อรองรับโค้ดเก่าบางจุด
+  };
+  if(idx<0) monsters.push(mon); else monsters[idx]=mon;
+  save();
+  if(window.firebaseMonsterFarm?.saveGlobalState){window.firebaseMonsterFarm.saveGlobalState({monsters}).catch(err=>alert('บันทึกมอนสเตอร์กลางไม่สำเร็จ: '+err.message));}
+  renderMonsterSelect();admTab('list');
+}
+
+function admDelMon(idx){
+  if(!confirm('ลบสัตว์ปิศาจนี้?')) return;
+  monsters.splice(idx,1);save();
+  if(window.firebaseMonsterFarm?.saveGlobalState){window.firebaseMonsterFarm.saveGlobalState({monsters}).catch(err=>alert('บันทึกมอนสเตอร์กลางไม่สำเร็จ: '+err.message));}
+  renderMonsterSelect();renderAdmMonList();
+}
+
+function escapeHtmlSafe(str){
+  return String(str ?? '')
+    .replaceAll('&','&amp;')
+    .replaceAll('<','&lt;')
+    .replaceAll('>','&gt;')
+    .replaceAll('"','&quot;')
+    .replaceAll("'","&#039;");
+}
+function escapeInputValue(str){return escapeHtmlSafe(str);}
+function escapeTextareaValue(str){return escapeHtmlSafe(str);}
+
+function renderAdmItems(){
+  const el=document.getElementById('adm-items-list');
+  if(!el) return;
+
+  if(!inventory.length){
+    el.innerHTML=`
+      <div class="notice">ยังไม่มีไอเทม</div>
+      <button class="btn btn-gold btn-full" onclick="createItem()">➕ สร้างไอเทมใหม่</button>
+    `;
+    return;
+  }
+
+  el.innerHTML = `
+    ${inventory.map((it,i)=>`
+      <div class="mon-admin-card">
+        <div class="card-title">ไอเทม #${i+1}</div>
+        <div class="fr3">
+          <div class="fg"><label class="fl">ไอคอน</label><input type="text" value="${escapeInputValue(it.icon||'📦')}" id="it-icon-${i}"></div>
+          <div class="fg"><label class="fl">ชื่อไอเทม</label><input type="text" value="${escapeInputValue(it.name||'')}" id="it-name-${i}"></div>
+          <div class="fg"><label class="fl">จำนวน</label><input type="number" value="${Number(it.count||0)}" id="it-count-${i}" min="0"></div>
+        </div>
+        <div class="fg"><label class="fl">คำอธิบาย</label><textarea id="it-desc-${i}">${escapeTextareaValue(it.desc||'')}</textarea></div>
+        <div class="fg">
+          <label class="fl">Effect / ประเภทการใช้งาน</label>
+          <select id="it-effect-${i}">
+            <option value="custom" ${it.effect==='custom'?'selected':''}>custom / วัสดุทั่วไป</option>
+            <option value="capture_required" ${it.effect==='capture_required'?'selected':''}>capture_required / ใช้จับสัตว์ปิศาจ</option>
+            <option value="heal30" ${it.effect==='heal30'?'selected':''}>heal30 / ฟื้น HP 30</option>
+            <option value="heal60" ${it.effect==='heal60'?'selected':''}>heal60 / ฟื้น HP 60</option>
+            <option value="dmg25" ${it.effect==='dmg25'?'selected':''}>dmg25 / ทำดาเมจ 25</option>
+            <option value="shield50" ${it.effect==='shield50'?'selected':''}>shield50 / ลดดาเมจ 50%</option>
+            <option value="elixir" ${it.effect==='elixir'?'selected':''}>elixir / น้ำปราณ</option>
+            <option value="material" ${it.effect==='material'?'selected':''}>material / วัตถุดิบ</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+          <button class="btn btn-gold btn-sm" onclick="saveItem(${i})">💾 บันทึก</button>
+          <button class="btn btn-out btn-sm" onclick="addQty(${i},1)">+1</button>
+          <button class="btn btn-out btn-sm" onclick="addQty(${i},5)">+5</button>
+          <button class="btn btn-out btn-sm" onclick="addQty(${i},-1)">-1</button>
+          <button class="btn btn-out btn-sm" onclick="addQty(${i},-5)">-5</button>
+          <button class="btn btn-red btn-sm" onclick="deleteItem(${i})">🗑 ลบ</button>
+        </div>
+      </div>
+    `).join('')}
+    <button class="btn btn-gold btn-full" onclick="createItem()">➕ สร้างไอเทมใหม่</button>
+  `;
+
+  const sel=document.getElementById('adm-item-sel');
+  if(sel){
+    sel.innerHTML=inventory.map(it=>`<option value="${escapeInputValue(it.id)}">${escapeHtmlSafe(it.icon||'📦')} ${escapeHtmlSafe(it.name||'ไม่ระบุชื่อ')}</option>`).join('');
+  }
+}
+
+function saveItem(i){
+  if(!inventory[i]) return;
+  inventory[i].icon = document.getElementById(`it-icon-${i}`).value || '📦';
+  inventory[i].name = document.getElementById(`it-name-${i}`).value || 'ไอเทมไม่มีชื่อ';
+  inventory[i].count = Math.max(0, parseInt(document.getElementById(`it-count-${i}`).value) || 0);
+  inventory[i].desc = document.getElementById(`it-desc-${i}`).value || '';
+  inventory[i].effect = document.getElementById(`it-effect-${i}`).value || 'custom';
+  if(!inventory[i].id) inventory[i].id = 'item_' + Date.now() + '_' + i;
+  save(); renderInventory(); renderAdmItems();
+  alert('บันทึกไอเทมแล้ว');
+}
+
+function addQty(i,delta){
+  if(!inventory[i]) return;
+  inventory[i].count = Math.max(0, (Number(inventory[i].count)||0) + Number(delta||0));
+  save(); renderInventory(); renderAdmItems();
+}
+
+function deleteItem(i){
+  if(!inventory[i]) return;
+  const name = inventory[i].name || 'ไอเทมนี้';
+  if(!confirm(`ลบ ${name} ?`)) return;
+  inventory.splice(i,1);
+  save(); renderInventory(); renderAdmItems();
+}
+
+function createItem(){
+  inventory.push({id:'item_' + Date.now(), name:'ไอเทมใหม่', icon:'📦', desc:'', count:0, effect:'custom'});
+  save(); renderInventory(); renderAdmItems();
+}
+
+function admAddItem(){
+  const id=document.getElementById('adm-item-sel')?.value;
+  const qty=parseInt(document.getElementById('adm-item-qty')?.value)||1;
+  const inv=inventory.find(i=>i.id===id);
+  if(inv){
+    inv.count=Math.max(0,(Number(inv.count)||0)+qty);
+    save(); renderInventory(); renderAdmItems();
+  }
+}
+
+// ══════════════════════════════════════════════
+//  FIREBASE INIT / LOAD
+// ══════════════════════════════════════════════
+async function loadFromFirebase(){
+  if(!window.firebaseMonsterFarm) return;
+  try{
+    const cloud = await window.firebaseMonsterFarm.loadGlobalState();
+    if(!cloud){
+      await window.firebaseMonsterFarm.saveGlobalState({monsters});
+      console.log('🌱 Seed ข้อมูลมอนสเตอร์กลางขึ้น Firebase แล้ว');
+    }else if(Array.isArray(cloud.monsters)){
+      monsters = cloud.monsters;
+      localStorage.setItem('lhumu_monsters',JSON.stringify(monsters));
+      console.log('☁️ โหลดข้อมูลมอนสเตอร์กลางจาก Firebase สำเร็จ');
+    }
+    allHistory = await window.firebaseMonsterFarm.loadBattleHistory().catch(()=>[]);
+  }catch(err){
+    console.error('โหลด Firebase ไม่สำเร็จ:', err);
+    const status=document.getElementById('login-status');
+    if(status){
+      status.textContent = err.message || 'โหลด Firebase ไม่สำเร็จ';
+      status.style.color = '#8b0000';
+    }
+  }
+}
+
+async function loginPlayer(){
+  const nameEl=document.getElementById('login-name');
+  const pinEl=document.getElementById('login-pin');
+  const status=document.getElementById('login-status');
+  const name=String(nameEl?.value||'').trim();
+  const pin=String(pinEl?.value||'').trim();
+  if(status){status.textContent='กำลังเข้าสู่ระบบ...';status.style.color='#555';}
+  if(!name || !pin){
+    if(status){status.textContent='กรุณากรอกชื่อตัวละครและรหัสผู้เล่น';status.style.color='#8b0000';}
+    return;
+  }
+  if(!window.firebaseMonsterFarm){
+    if(status){status.textContent='Firebase ยังไม่พร้อม กรุณารีเฟรชหน้าเว็บ';status.style.color='#8b0000';}
+    return;
+  }
+  try{
+    const defaults={
+      savedProfile:{name,hp:100,earth:0,water:0,wind:0,fire:0,wood:0,metal:0,prana:0,dodge:0,knowledge:0,gold:0,path:'other',profileLocked:false},
+      inventory:JSON.parse(JSON.stringify(DEFAULT_ITEMS)),
+      history:[]
+    };
+    const data=await window.firebaseMonsterFarm.loginPlayer(name,pin,defaults);
+    const key=window.firebaseMonsterFarm.currentPlayerKey;
+    playerSession={key,name};
+    localStorage.setItem('tycm_current_player',JSON.stringify(playerSession));
+
+    savedProfile=data.savedProfile || defaults.savedProfile;
+    savedProfile.name=name;
+    inventory=Array.isArray(data.inventory)?data.inventory:defaults.inventory;
+    history=Array.isArray(data.history)?data.history:[];
+    selectedPath=savedProfile?.path||'other';
+
+    localStorage.setItem(`tycm_${key}_profile`,JSON.stringify(savedProfile));
+    localStorage.setItem(`tycm_${key}_inv`,JSON.stringify(inventory));
+    localStorage.setItem(`tycm_${key}_history`,JSON.stringify(history));
+
+    const ov=document.getElementById('login-ov');
+    if(ov) ov.style.display='none';
+
+    await loadFromFirebase();
+    renderPathPicker();
+    loadProfileForm();
+    refreshLobby();
+    renderMonsterSelect();
+    renderInventory();
+    renderHistory();
+    save();
+    if(status) status.textContent='';
+  }catch(err){
+    console.error('Login failed:', err);
+    if(status){status.textContent=err.message||'เข้าสู่ระบบไม่สำเร็จ';status.style.color='#8b0000';}
+  }
+}
+
+async function initApp(){
+  document.getElementById('btn-heal').style.display='none';
+  document.getElementById('btn-purify').style.display='none';
+  document.getElementById('btn-array').style.display='none';
+  await loadFromFirebase();
+  renderPathPicker();
+  renderMonsterSelect();
+  renderInventory();
+  renderHistory();
+  const savedSession=JSON.parse(localStorage.getItem('tycm_current_player')||'null');
+  const ln=document.getElementById('login-name');
+  if(ln && savedSession?.name) ln.value=savedSession.name;
+  const ov=document.getElementById('login-ov');
+  if(ov) ov.style.display='flex';
+}
+
+initApp();
+</script>
+</body>
+</html>
